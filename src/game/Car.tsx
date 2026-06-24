@@ -16,6 +16,7 @@ import {
   BLUE_TEAM_COLOR, ORANGE_TEAM_COLOR, BLUE_TEAM_EMISSIVE, ORANGE_TEAM_EMISSIVE,
 } from '../constants';
 import type { PlayerInput, Team } from '../types';
+import { audioManager } from '../audio/AudioManager';
 
 export interface CarHandle {
   getPosition: () => THREE.Vector3;
@@ -270,6 +271,10 @@ const Car = forwardRef<CarHandle, CarProps>(({ team, startPosition, startRotatio
     // === BOOST ===
     boostActive.current = false;
     if (input.boost && boost.current > 0) {
+      if (!wasJumpPressed.current && !supersonicRef.current) {
+         // Optionally check for first frame of boost to play start sound
+         // We can simplify and just rely on engine update for now, or track wasBoosting.
+      }
       boost.current = Math.max(0, boost.current - BOOST_CONSUMPTION_RATE * delta);
       const boostDir = forward.clone().multiplyScalar(BOOST_FORCE * CAR_MASS * delta);
       rb.applyImpulse({ x: boostDir.x, y: boostDir.y, z: boostDir.z }, true);
@@ -284,6 +289,7 @@ const Car = forwardRef<CarHandle, CarProps>(({ team, startPosition, startRotatio
         jumpsLeft.current = 1;
         jumpTimer.current = DODGE_TIMER;
         lastJumpTime.current = performance.now();
+        if (name === 'Player') audioManager.playJump();
       } else if (!onGround && jumpsLeft.current === 1 && jumpTimer.current > 0) {
         // Dodge/flip or double jump
         const hasDirection = input.forward || input.backward || input.left || input.right;
@@ -306,9 +312,11 @@ const Car = forwardRef<CarHandle, CarProps>(({ team, startPosition, startRotatio
             { x: dodgeZ * DODGE_TORQUE * CAR_MASS, y: 0, z: -dodgeX * DODGE_TORQUE * CAR_MASS },
             true
           );
+          if (name === 'Player') audioManager.playDodge();
         } else {
           // Double jump (straight up)
           rb.applyImpulse({ x: 0, y: DOUBLE_JUMP_FORCE * CAR_MASS, z: 0 }, true);
+          if (name === 'Player') audioManager.playJump();
         }
         jumpsLeft.current = 0;
         jumpTimer.current = 0;
@@ -323,6 +331,11 @@ const Car = forwardRef<CarHandle, CarProps>(({ team, startPosition, startRotatio
     if (onGround) {
       const angvel = rb.angvel();
       rb.setAngvel({ x: angvel.x * 0.9, y: angvel.y * 0.95, z: angvel.z * 0.9 }, true);
+    }
+    
+    // Update engine sound for player
+    if (name === 'Player') {
+      audioManager.updateEngine(speed, boostActive.current);
     }
   }
 

@@ -13,6 +13,7 @@ import {
   BALL_START_POS, KICKOFF_COUNTDOWN, GOAL_REPLAY_DURATION,
 } from '../constants';
 import type { Team } from '../types';
+import { audioManager } from '../audio/AudioManager';
 
 interface GameManagerProps {
   playerCarRef: React.RefObject<CarHandle | null>;
@@ -156,6 +157,7 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
       const scorerName = scoringTeam === 'blue' ? 'Player' : 'Bot';
       addGoal(scoringTeam, scorerName);
       goalReplayTimer.current = GOAL_REPLAY_DURATION;
+      audioManager.playGoal();
 
       // In overtime, any goal ends the game
       if (isOvertime) {
@@ -175,6 +177,7 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
 
         if (playerSpeed > 42 && !botCarRef.current.isDemolished()) {
           botCarRef.current.demolish();
+          audioManager.playHit(100);
           // Respawn bot after timer
           setTimeout(() => {
             botCarRef.current?.reset(ORANGE_SPAWN, ORANGE_SPAWN_ROTATION);
@@ -182,6 +185,7 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
         }
         if (botSpeed > 42 && !playerCarRef.current.isDemolished()) {
           playerCarRef.current.demolish();
+          audioManager.playHit(100);
           setTimeout(() => {
             playerCarRef.current?.reset(BLUE_SPAWN, BLUE_SPAWN_ROTATION);
           }, 3000);

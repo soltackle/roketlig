@@ -10,6 +10,7 @@ import {
   LARGE_BOOST_POSITIONS, SMALL_BOOST_POSITIONS,
 } from '../constants';
 import type { CarHandle } from './Car';
+import { audioManager } from '../audio/AudioManager';
 
 interface BoostPadProps {
   position: [number, number, number];
@@ -58,6 +59,11 @@ function BoostPad({ position, isLarge, carRefs }: BoostPadProps) {
           carRef.current.setBoost(Math.min(100, currentBoost + amount));
           setActive(false);
           respawnTimer.current = isLarge ? BOOST_LARGE_RESPAWN_TIME : BOOST_SMALL_RESPAWN_TIME;
+          // Play sound if player
+          const rb = carRef.current.getRigidBody();
+          if (rb && (rb.userData as any)?.name === 'Player') {
+             audioManager.playBoostStart(); // Or a specific pickup sound
+          }
           break;
         }
       }

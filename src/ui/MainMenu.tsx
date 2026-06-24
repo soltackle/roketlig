@@ -3,6 +3,7 @@
 // ============================================
 import { useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
+import { audioManager } from '../audio/AudioManager';
 import './MainMenu.css';
 
 export default function MainMenu() {
@@ -10,6 +11,7 @@ export default function MainMenu() {
   const setPhase = useGameStore((s) => s.setPhase);
   const setMatchSettings = useGameStore((s) => s.setMatchSettings);
   const resetMatch = useGameStore((s) => s.resetMatch);
+  const settings = useGameStore((s) => s.settings);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedMode, setSelectedMode] = useState<'1v1' | '2v2'>('1v1');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
@@ -17,6 +19,8 @@ export default function MainMenu() {
   if (phase !== 'menu') return null;
 
   const startGame = () => {
+    audioManager.init();
+    audioManager.setVolumes(settings.masterVolume, settings.sfxVolume);
     resetMatch();
     setMatchSettings({ mode: selectedMode, botDifficulty: selectedDifficulty });
     setPhase('countdown');
