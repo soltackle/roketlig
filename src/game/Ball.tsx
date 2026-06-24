@@ -104,7 +104,7 @@ const Ball = forwardRef<BallHandle>((_props, ref) => {
       {/* Ball glow */}
       <mesh ref={meshRef}>
         <sphereGeometry args={[BALL_RADIUS * 1.15, 16, 16]} />
-        <meshBasicMaterial color="#ffffff" opacity={0.08} transparent />
+        <meshBasicMaterial color="#ffffff" opacity={0.15} transparent toneMapped={false} />
       </mesh>
 
       {/* Trail */}

@@ -1,9 +1,8 @@
-// ============================================
-// APP - Main Application Component
-// ============================================
 import { Suspense, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { Environment } from '@react-three/drei';
 import { useGameStore } from './stores/gameStore';
 import { useInputManager } from './input/useInputManager';
 
@@ -109,6 +108,10 @@ export default function App() {
             </>
           )}
           <GameScene />
+          <Environment preset="night" />
+          <EffectComposer multisampling={4}>
+            <Bloom luminanceThreshold={1} mipmapBlur intensity={1.5} />
+          </EffectComposer>
         </Suspense>
       </Canvas>
 

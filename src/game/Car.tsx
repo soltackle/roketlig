@@ -403,21 +403,6 @@ const Car = forwardRef<CarHandle, CarProps>(({ team, startPosition, startRotatio
           <meshStandardMaterial color={teamColor} emissive={emissiveColor} emissiveIntensity={0.3} metalness={0.7} roughness={0.2} />
         </mesh>
 
-        {/* Rear spoiler */}
-        <mesh position={[0, CAR_HEIGHT * 1.1, CAR_LENGTH * 0.4]}>
-          <boxGeometry args={[CAR_WIDTH * 0.9, 0.08, 0.4]} />
-          <meshStandardMaterial color="#222222" metalness={0.8} roughness={0.2} />
-        </mesh>
-        {/* Spoiler supports */}
-        <mesh position={[-CAR_WIDTH * 0.35, CAR_HEIGHT * 0.9, CAR_LENGTH * 0.4]}>
-          <boxGeometry args={[0.08, CAR_HEIGHT * 0.3, 0.08]} />
-          <meshStandardMaterial color="#333333" metalness={0.7} roughness={0.3} />
-        </mesh>
-        <mesh position={[CAR_WIDTH * 0.35, CAR_HEIGHT * 0.9, CAR_LENGTH * 0.4]}>
-          <boxGeometry args={[0.08, CAR_HEIGHT * 0.3, 0.08]} />
-          <meshStandardMaterial color="#333333" metalness={0.7} roughness={0.3} />
-        </mesh>
-
         {/* Wheels */}
         {[
           [-CAR_WIDTH * 0.5, 0.15, -CAR_LENGTH * 0.3],
@@ -427,10 +412,9 @@ const Car = forwardRef<CarHandle, CarProps>(({ team, startPosition, startRotatio
         ].map((pos, i) => (
           <mesh key={i} position={pos as [number, number, number]} rotation={[0, 0, Math.PI / 2]}>
             <cylinderGeometry args={[0.35, 0.35, 0.25, 16]} />
-            <meshStandardMaterial color="#111111" metalness={0.3} roughness={0.8} />
+            <meshStandardMaterial color="#111111" emissive={emissiveColor} emissiveIntensity={1.5} toneMapped={false} metalness={0.3} roughness={0.8} />
           </mesh>
         ))}
-
         {/* Headlights */}
         <mesh position={[-CAR_WIDTH * 0.3, CAR_HEIGHT * 0.5, -CAR_LENGTH * 0.52]}>
           <sphereGeometry args={[0.15, 8, 8]} />
