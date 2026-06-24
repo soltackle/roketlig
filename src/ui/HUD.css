@@ -1,0 +1,304 @@
+/* ============================================
+   HUD STYLES
+   ============================================ */
+
+.hud-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
+  font-family: 'Orbitron', sans-serif;
+}
+
+/* === SCORE BAR === */
+.hud-score-bar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+  padding: 8px 0;
+}
+
+.hud-score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+  min-width: 140px;
+}
+
+.blue-score {
+  background: linear-gradient(90deg, rgba(33,150,243,0.6), rgba(33,150,243,0.1));
+  border-radius: 0 0 0 12px;
+  justify-content: flex-end;
+}
+
+.orange-score {
+  background: linear-gradient(270deg, rgba(255,109,0,0.6), rgba(255,109,0,0.1));
+  border-radius: 0 0 12px 0;
+  justify-content: flex-start;
+}
+
+.team-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  opacity: 0.8;
+}
+
+.score-value {
+  font-size: 32px;
+  font-weight: 900;
+  text-shadow: 0 0 20px rgba(255,255,255,0.5);
+}
+
+.hud-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 20px;
+  background: rgba(0,0,0,0.7);
+  border-radius: 0 0 8px 8px;
+  min-width: 100px;
+}
+
+.overtime-label {
+  font-size: 9px;
+  color: #ff4444;
+  letter-spacing: 3px;
+  animation: pulse 1s infinite;
+}
+
+.timer-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* === BOOST METER === */
+.hud-boost-container {
+  position: absolute;
+  bottom: 30px;
+  right: 40px;
+  width: 100px;
+  height: 100px;
+}
+
+.boost-ring {
+  width: 100%;
+  height: 100%;
+}
+
+.boost-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.3);
+}
+
+/* === SPEED === */
+.hud-speed {
+  position: absolute;
+  bottom: 35px;
+  left: 40px;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.speed-value {
+  font-size: 36px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 0 15px rgba(255,255,255,0.3);
+}
+
+.speed-unit {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 1px;
+}
+
+/* === BALL CAM === */
+.hud-ballcam {
+  position: absolute;
+  top: 70px;
+  left: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  padding: 6px 12px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.1);
+  letter-spacing: 1px;
+}
+
+.hud-ballcam.active {
+  color: #00ff88;
+  border-color: rgba(0,255,136,0.3);
+  background: rgba(0,255,136,0.1);
+}
+
+/* === COUNTDOWN === */
+.hud-countdown {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.countdown-number {
+  font-size: 120px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 0 40px rgba(255,255,255,0.6), 0 0 80px rgba(0,200,255,0.4);
+  animation: countdownPulse 1s ease-out;
+}
+
+/* === GOAL ALERT === */
+.hud-goal-alert {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  animation: goalSlide 0.5s ease-out;
+}
+
+.hud-goal-alert.blue .goal-text {
+  color: #2196F3;
+  text-shadow: 0 0 40px rgba(33,150,243,0.8);
+}
+
+.hud-goal-alert.orange .goal-text {
+  color: #FF6D00;
+  text-shadow: 0 0 40px rgba(255,109,0,0.8);
+}
+
+.goal-text {
+  font-size: 80px;
+  font-weight: 900;
+  letter-spacing: 8px;
+}
+
+.goal-scorer {
+  font-size: 24px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  margin-top: 8px;
+  letter-spacing: 3px;
+}
+
+/* === OVERTIME ALERT === */
+.hud-overtime-alert {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.overtime-text {
+  font-size: 60px;
+  font-weight: 900;
+  color: #ff4444;
+  text-shadow: 0 0 30px rgba(255,68,68,0.6);
+  letter-spacing: 6px;
+  animation: pulse 1.5s infinite;
+}
+
+/* === GAME FINISHED === */
+.hud-finished {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  background: rgba(0,0,0,0.85);
+  padding: 40px 60px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.15);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+}
+
+.finished-title {
+  font-size: 48px;
+  font-weight: 900;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #00ff88, #00ccff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.finished-score {
+  font-size: 64px;
+  font-weight: 900;
+  color: #ffffff;
+  margin-bottom: 30px;
+}
+
+.finished-btn {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 14px 40px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.3s ease;
+}
+
+.finished-btn:hover {
+  background: linear-gradient(135deg, #818cf8, #a78bfa);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(99,102,241,0.4);
+}
+
+/* === CONTROLS HELP === */
+.hud-controls {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.35);
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.5px;
+}
+
+/* === ANIMATIONS === */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes countdownPulse {
+  0% { transform: scale(1.5); opacity: 0; }
+  50% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 1; }
+}
+
+@keyframes goalSlide {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
