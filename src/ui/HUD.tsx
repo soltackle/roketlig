@@ -17,11 +17,13 @@ export default function HUD() {
   const isOvertime = useGameStore((s) => s.isOvertime);
   const playerBoost = useGameStore((s) => s.playerBoost);
   const playerSpeed = useGameStore((s) => s.playerSpeed);
+  const isSupersonic = useGameStore((s) => s.isSupersonic);
   const ballCamEnabled = useGameStore((s) => s.ballCamEnabled);
   const phase = useGameStore((s) => s.phase);
   const lastGoalScoredBy = useGameStore((s) => s.lastGoalScoredBy);
   const lastGoalScorerName = useGameStore((s) => s.lastGoalScorerName);
   const countdownTimer = useGameStore((s) => s.countdownTimer);
+  const chatMessages = useGameStore((s) => s.chatMessages);
 
   if (phase === 'menu' || phase === 'lobby') return null;
 
@@ -30,7 +32,9 @@ export default function HUD() {
   const boostAngle = (boostPercent / 100) * 270; // 270 degree arc
 
   return (
-    <div className="hud-container">
+    <>
+      <div className={`speed-lines ${isSupersonic && phase === 'playing' ? 'active' : ''}`}></div>
+      <div className="hud-container">
       {/* Score Bar */}
       <div className="hud-score-bar">
         <div className="hud-score blue-score">
@@ -91,6 +95,15 @@ export default function HUD() {
         {ballCamEnabled ? '⚽ BALL CAM' : '🚗 CAR CAM'}
       </div>
 
+      {/* Chat Messages */}
+      <div className="hud-chat-box">
+        {chatMessages.filter(msg => Date.now() - msg.time < 5000).map((msg, idx) => (
+          <div key={idx} className="chat-message">
+            <span className="chat-sender">{msg.sender}:</span> {msg.message}
+          </div>
+        ))}
+      </div>
+
       {/* Countdown */}
       {phase === 'countdown' && countdownTimer > 0 && (
         <div className="hud-countdown">
@@ -131,6 +144,18 @@ export default function HUD() {
         </div>
       )}
 
+      {/* Pause Menu Overlay */}
+      {phase === 'paused' && (
+        <div className="hud-finished" style={{ background: 'rgba(0,0,0,0.8)' }}>
+          <div className="finished-title">PAUSED</div>
+          <button className="finished-btn" onClick={() => useGameStore.getState().setPhase('playing')}>RESUME</button>
+          <button className="finished-btn" onClick={() => {
+            useGameStore.getState().resetMatch();
+            useGameStore.getState().setPhase('menu');
+          }} style={{marginTop: '10px', background: '#d32f2f'}}>QUIT TO MENU</button>
+        </div>
+      )}
+
       {/* Controls Help */}
       <div className="hud-controls">
         <span>WASD: Drive</span>
@@ -139,5 +164,6 @@ export default function HUD() {
         <span>Y: Ball Cam</span>
       </div>
     </div>
+    </>
   );
 }

@@ -1,9 +1,11 @@
 // ============================================
 // ARENA - 3D Stadium with Neon Cyberpunk Style
 // ============================================
-import { RigidBody, CuboidCollider } from '@react-three/rapier';
-import { Grid } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { CuboidCollider, RigidBody } from '@react-three/rapier';
+import { Grid, Text } from '@react-three/drei';
 import * as THREE from 'three';
+import { useGameStore } from '../stores/gameStore';
 import {
   ARENA_WIDTH, ARENA_LENGTH, ARENA_HEIGHT, WALL_THICKNESS,
   GOAL_WIDTH, GOAL_HEIGHT, GOAL_DEPTH,
@@ -44,10 +46,24 @@ export default function Arena() {
   return (
     <group>
       {/* Lights */}
-      <ambientLight intensity={0.2} />
-      <directionalLight position={[10, 50, 10]} intensity={1.5} castShadow />
-      <pointLight position={[0, 20, 0]} intensity={1} distance={100} color="#ffffff" />
+      <ambientLight intensity={0.5} />
+      <directionalLight
+        position={[100, 100, 50]}
+        castShadow
+        intensity={1}
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-60}
+        shadow-camera-right={60}
+        shadow-camera-top={100}
+        shadow-camera-bottom={-100}
+      />
       
+      {/* Stadium Spotlights */}
+      <spotLight position={[-40, 60, -60]} angle={0.6} penumbra={0.8} intensity={2000} color="#e0f7fa" castShadow />
+      <spotLight position={[40, 60, -60]} angle={0.6} penumbra={0.8} intensity={2000} color="#e0f7fa" castShadow />
+      <spotLight position={[-40, 60, 60]} angle={0.6} penumbra={0.8} intensity={2000} color="#e0f7fa" castShadow />
+      <spotLight position={[40, 60, 60]} angle={0.6} penumbra={0.8} intensity={2000} color="#e0f7fa" castShadow />
+
       {/* Floor */}
       <RigidBody type="fixed" colliders="cuboid" restitution={0.2} friction={0.5}>
         <mesh position={[0, -1, 0]} receiveShadow material={floorMaterial}>
@@ -149,6 +165,19 @@ export default function Arena() {
           </mesh>
         </RigidBody>
         <pointLight position={[0, GOAL_HEIGHT/2, -GOAL_DEPTH/2]} color="#0088ff" intensity={2} distance={20} />
+        {/* Neon Light Tubes */}
+        <mesh position={[0, GOAL_HEIGHT, 0]}>
+          <boxGeometry args={[GOAL_WIDTH + 0.4, 0.4, 0.4]} />
+          <meshBasicMaterial color="#00ffff" />
+        </mesh>
+        <mesh position={[-GOAL_WIDTH / 2, GOAL_HEIGHT / 2, 0]}>
+          <boxGeometry args={[0.4, GOAL_HEIGHT, 0.4]} />
+          <meshBasicMaterial color="#00ffff" />
+        </mesh>
+        <mesh position={[GOAL_WIDTH / 2, GOAL_HEIGHT / 2, 0]}>
+          <boxGeometry args={[0.4, GOAL_HEIGHT, 0.4]} />
+          <meshBasicMaterial color="#00ffff" />
+        </mesh>
       </group>
 
       {/* Orange Goal */}
@@ -171,7 +200,66 @@ export default function Arena() {
             <boxGeometry args={[GOAL_WIDTH, 0.5, GOAL_DEPTH]} />
           </mesh>
         </RigidBody>
-        <pointLight position={[0, GOAL_HEIGHT/2, GOAL_DEPTH/2]} color="#ff4400" intensity={2} distance={20} />
+        <pointLight position={[0, GOAL_HEIGHT/2, GOAL_DEPTH/2]} color="#ff8800" intensity={2} distance={20} />
+        {/* Neon Light Tubes */}
+        <mesh position={[0, GOAL_HEIGHT, 0]}>
+          <boxGeometry args={[GOAL_WIDTH + 0.4, 0.4, 0.4]} />
+          <meshBasicMaterial color="#ffcc00" />
+        </mesh>
+        <mesh position={[-GOAL_WIDTH / 2, GOAL_HEIGHT / 2, 0]}>
+          <boxGeometry args={[0.4, GOAL_HEIGHT, 0.4]} />
+          <meshBasicMaterial color="#ffcc00" />
+        </mesh>
+        <mesh position={[GOAL_WIDTH / 2, GOAL_HEIGHT / 2, 0]}>
+          <boxGeometry args={[0.4, GOAL_HEIGHT, 0.4]} />
+          <meshBasicMaterial color="#ffcc00" />
+        </mesh>
+      </group>
+
+      {/* Holographic Scoreboard */}
+      <HolographicScoreboard />
+    </group>
+  );
+}
+
+function HolographicScoreboard() {
+  const blueScore = useGameStore((s) => s.blueScore);
+  const orangeScore = useGameStore((s) => s.orangeScore);
+  const timeRemaining = useGameStore((s) => s.timeRemaining);
+  const isOvertime = useGameStore((s) => s.isOvertime);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <group position={[0, ARENA_HEIGHT - 5, 0]}>
+      {/* Front facing */}
+      <group position={[0, 0, 0]}>
+        <Text position={[-8, 0, 0]} fontSize={8} color="#0088ff" anchorX="center" anchorY="middle" material-toneMapped={false}>
+          {blueScore}
+        </Text>
+        <Text position={[0, 0, 0]} fontSize={4} color="#ffffff" anchorX="center" anchorY="middle" material-toneMapped={false}>
+          {isOvertime ? 'OT' : formatTime(timeRemaining)}
+        </Text>
+        <Text position={[8, 0, 0]} fontSize={8} color="#ff8800" anchorX="center" anchorY="middle" material-toneMapped={false}>
+          {orangeScore}
+        </Text>
+      </group>
+      
+      {/* Back facing (so both sides can read it) */}
+      <group position={[0, 0, 0]} rotation={[0, Math.PI, 0]}>
+        <Text position={[8, 0, 0]} fontSize={8} color="#0088ff" anchorX="center" anchorY="middle" material-toneMapped={false}>
+          {blueScore}
+        </Text>
+        <Text position={[0, 0, 0]} fontSize={4} color="#ffffff" anchorX="center" anchorY="middle" material-toneMapped={false}>
+          {isOvertime ? 'OT' : formatTime(timeRemaining)}
+        </Text>
+        <Text position={[-8, 0, 0]} fontSize={8} color="#ff8800" anchorX="center" anchorY="middle" material-toneMapped={false}>
+          {orangeScore}
+        </Text>
       </group>
     </group>
   );

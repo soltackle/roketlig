@@ -11,6 +11,7 @@ export interface PlayerInput {
   right: boolean;
   jump: boolean;
   boost: boolean;
+  drift: boolean;
   airRollLeft: boolean;
   airRollRight: boolean;
 }
@@ -54,7 +55,7 @@ export interface BoostPadState {
   respawnTimer: number;
 }
 
-export type GamePhase = 'menu' | 'lobby' | 'countdown' | 'playing' | 'goal_scored' | 'overtime' | 'finished';
+export type GamePhase = 'menu' | 'lobby' | 'countdown' | 'playing' | 'goal_scored' | 'overtime' | 'finished' | 'paused';
 
 export interface GameState {
   phase: GamePhase;

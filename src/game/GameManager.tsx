@@ -3,14 +3,15 @@
 // ============================================
 import { useRef, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import { useGameStore } from '../stores/gameStore';
 import type { CarHandle } from './Car';
 import type { BallHandle } from './Ball';
 import { updateBotAI, createBotState, type BotDifficulty } from './BotAI';
 import {
   ARENA_LENGTH, GOAL_WIDTH, GOAL_HEIGHT,
-  BLUE_SPAWN, ORANGE_SPAWN, BLUE_SPAWN_ROTATION, ORANGE_SPAWN_ROTATION,
   BALL_START_POS, KICKOFF_COUNTDOWN, GOAL_REPLAY_DURATION,
+  KICKOFF_SPAWNS
 } from '../constants';
 import type { Team } from '../types';
 import { audioManager } from '../audio/AudioManager';
@@ -33,7 +34,6 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
   const setOvertime = useGameStore((s) => s.setOvertime);
   const countdownTimer = useGameStore((s) => s.countdownTimer);
   const setCountdownTimer = useGameStore((s) => s.setCountdownTimer);
-  const input = useGameStore((s) => s.input);
   const setPlayerBoost = useGameStore((s) => s.setPlayerBoost);
   const setPlayerSpeed = useGameStore((s) => s.setPlayerSpeed);
   const matchSettings = useGameStore((s) => s.matchSettings);
@@ -43,8 +43,10 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
   const gameInitialized = useRef(false);
 
   const resetPositions = useCallback(() => {
-    playerCarRef.current?.reset(BLUE_SPAWN, BLUE_SPAWN_ROTATION);
-    botCarRef.current?.reset(ORANGE_SPAWN, ORANGE_SPAWN_ROTATION);
+    const spawnIndex = Math.floor(Math.random() * KICKOFF_SPAWNS.length);
+    const spawn = KICKOFF_SPAWNS[spawnIndex];
+    playerCarRef.current?.reset(spawn.blue as [number, number, number], spawn.blueRot);
+    botCarRef.current?.reset(spawn.orange as [number, number, number], spawn.orangeRot);
     ballRef.current?.reset();
   }, [playerCarRef, botCarRef, ballRef]);
 
@@ -132,6 +134,7 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
     }
 
     // Apply player input
+    const input = useGameStore.getState().input;
     if (playerCarRef.current && !playerCarRef.current.isDemolished()) {
       playerCarRef.current.applyInput(input, delta);
       setPlayerBoost(playerCarRef.current.getBoost());
@@ -159,6 +162,27 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
       goalReplayTimer.current = GOAL_REPLAY_DURATION;
       audioManager.playGoal();
 
+      // Goal Explosion Shockwave
+      const ballPos = ballRef.current?.getPosition();
+      if (ballPos) {
+        useGameStore.getState().addCameraShake(5);
+        const applyShockwave = (car: CarHandle | null) => {
+          if (!car) return;
+          const rb = car.getRigidBody();
+          if (!rb) return;
+          const carPos = car.getPosition();
+          const dist = carPos.distanceTo(ballPos);
+          if (dist < 40) { // Only affect cars within 40 units
+            const force = Math.max(0, 1500 - dist * 30);
+            const dir = new THREE.Vector3().subVectors(carPos, ballPos).normalize();
+            rb.applyImpulse({ x: dir.x * force, y: 300 + force * 0.5, z: dir.z * force }, true);
+            rb.applyTorqueImpulse({ x: (Math.random() - 0.5) * force, y: (Math.random() - 0.5) * force, z: (Math.random() - 0.5) * force }, true);
+          }
+        };
+        applyShockwave(playerCarRef.current);
+        applyShockwave(botCarRef.current);
+      }
+
       // In overtime, any goal ends the game
       if (isOvertime) {
         setTimeout(() => setPhase('finished'), GOAL_REPLAY_DURATION * 1000);
@@ -178,17 +202,12 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
         if (playerSpeed > 42 && !botCarRef.current.isDemolished()) {
           botCarRef.current.demolish();
           audioManager.playHit(100);
-          // Respawn bot after timer
-          setTimeout(() => {
-            botCarRef.current?.reset(ORANGE_SPAWN, ORANGE_SPAWN_ROTATION);
-          }, 3000);
+          useGameStore.getState().addCameraShake(3);
         }
         if (botSpeed > 42 && !playerCarRef.current.isDemolished()) {
           playerCarRef.current.demolish();
           audioManager.playHit(100);
-          setTimeout(() => {
-            playerCarRef.current?.reset(BLUE_SPAWN, BLUE_SPAWN_ROTATION);
-          }, 3000);
+          useGameStore.getState().addCameraShake(3);
         }
       }
     }

@@ -45,6 +45,15 @@ interface GameStore {
   matchSettings: MatchSettings;
   setMatchSettings: (settings: Partial<MatchSettings>) => void;
 
+  // Camera Shake
+  cameraShake: number;
+  addCameraShake: (amount: number) => void;
+  setCameraShake: (amount: number) => void;
+
+  // Supersonic
+  isSupersonic: boolean;
+  setIsSupersonic: (val: boolean) => void;
+
   // Input state
   input: {
     forward: boolean;
@@ -53,6 +62,7 @@ interface GameStore {
     right: boolean;
     jump: boolean;
     boost: boolean;
+    drift: boolean;
     airRollLeft: boolean;
     airRollRight: boolean;
   };
@@ -123,6 +133,15 @@ export const useGameStore = create<GameStore>((set) => ({
       matchSettings: { ...state.matchSettings, ...settings },
     })),
 
+  // Camera shake
+  cameraShake: 0,
+  addCameraShake: (amount) => set((state) => ({ cameraShake: state.cameraShake + amount })),
+  setCameraShake: (amount) => set({ cameraShake: amount }),
+
+  // Supersonic
+  isSupersonic: false,
+  setIsSupersonic: (val) => set({ isSupersonic: val }),
+
   input: {
     forward: false,
     backward: false,
@@ -130,6 +149,7 @@ export const useGameStore = create<GameStore>((set) => ({
     right: false,
     jump: false,
     boost: false,
+    drift: false,
     airRollLeft: false,
     airRollRight: false,
   },

@@ -27,6 +27,12 @@ function BoostPad({ position, isLarge, carRefs }: BoostPadProps) {
   const height = isLarge ? 1.5 : 0.6;
 
   useFrame((_, delta) => {
+    // Animate mesh scale
+    if (meshRef.current) {
+      const targetScale = active ? 1 : 0;
+      meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 15);
+    }
+
     // Respawn timer
     if (!active) {
       respawnTimer.current -= delta;

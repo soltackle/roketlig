@@ -67,11 +67,19 @@ export const CAMERA_DISTANCE = 12;
 export const CAMERA_HEIGHT = 5;
 export const CAMERA_STIFFNESS = 4;
 
-// --- Spawn Positions ---
-export const BLUE_SPAWN: [number, number, number] = [0, 2, -35];
-export const ORANGE_SPAWN: [number, number, number] = [0, 2, 35];
-export const BLUE_SPAWN_ROTATION = 0; // facing +Z (toward orange goal)
-export const ORANGE_SPAWN_ROTATION = Math.PI; // facing -Z (toward blue goal)
+// --- Kickoff Positions ---
+export const KICKOFF_SPAWNS = [
+  // Center
+  { blue: [0, CAR_HEIGHT, -40], orange: [0, CAR_HEIGHT, 40], blueRot: 0, orangeRot: Math.PI },
+  // Diagonal 1 (Blue Left, Orange Right)
+  { blue: [-15, CAR_HEIGHT, -30], orange: [15, CAR_HEIGHT, 30], blueRot: Math.PI / 4, orangeRot: -Math.PI * 0.75 },
+  // Diagonal 2 (Blue Right, Orange Left)
+  { blue: [15, CAR_HEIGHT, -30], orange: [-15, CAR_HEIGHT, 30], blueRot: -Math.PI / 4, orangeRot: Math.PI * 0.75 },
+  // Off-center 1
+  { blue: [-10, CAR_HEIGHT, -35], orange: [10, CAR_HEIGHT, 35], blueRot: 0, orangeRot: Math.PI },
+  // Off-center 2
+  { blue: [10, CAR_HEIGHT, -35], orange: [-10, CAR_HEIGHT, 35], blueRot: 0, orangeRot: Math.PI },
+] as const;
 
 // --- Team Colors ---
 export const BLUE_TEAM_COLOR = '#2196F3';

@@ -18,6 +18,7 @@ const KEY_MAP: Record<string, string> = {
   ShiftRight: 'boost',
   KeyQ: 'airRollLeft',
   KeyE: 'airRollRight',
+  KeyC: 'drift',
 };
 
 export function useInputManager() {
@@ -48,6 +49,23 @@ export function useInputManager() {
       // Scoreboard
       if (e.code === 'Tab') {
         setScoreboardVisible(true);
+      }
+
+      // Pause Menu
+      if (e.code === 'Escape' && !e.repeat) {
+        if (useGameStore.getState().phase === 'playing') {
+          useGameStore.getState().setPhase('paused');
+        } else if (useGameStore.getState().phase === 'paused') {
+          useGameStore.getState().setPhase('playing');
+        }
+      }
+
+      // Quick Chat
+      if (!e.repeat) {
+        if (e.code === 'Digit1') useGameStore.getState().addChatMessage('Player', 'What a save!');
+        if (e.code === 'Digit2') useGameStore.getState().addChatMessage('Player', 'Great pass!');
+        if (e.code === 'Digit3') useGameStore.getState().addChatMessage('Player', 'Nice shot!');
+        if (e.code === 'Digit4') useGameStore.getState().addChatMessage('Player', 'Oops!');
       }
     };
 

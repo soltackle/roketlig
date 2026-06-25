@@ -1,7 +1,8 @@
 import { Suspense, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Vignette, ChromaticAberration } from '@react-three/postprocessing';
+import * as THREE from 'three';
 import { Environment } from '@react-three/drei';
 import { useGameStore } from './stores/gameStore';
 import { useInputManager } from './input/useInputManager';
@@ -15,12 +16,9 @@ import GameManager from './game/GameManager';
 
 import MainMenu from './ui/MainMenu';
 import HUD from './ui/HUD';
+import Scoreboard from './ui/Scoreboard';
 
-import {
-  BLUE_SPAWN, ORANGE_SPAWN,
-  BLUE_SPAWN_ROTATION, ORANGE_SPAWN_ROTATION,
-  GRAVITY,
-} from './constants';
+import { KICKOFF_SPAWNS, GRAVITY } from './constants';
 
 function LoadingScreen() {
   return (
@@ -37,27 +35,27 @@ function GameScene() {
   const ballRef = useRef<BallHandle>(null);
   const phase = useGameStore((s) => s.phase);
 
-  // Only render game scene when not in menu
-  if (phase === 'menu') return null;
+  // If we want a 3D main menu, we should always render the game scene
+  // The camera will handle the 'menu' phase by panning around!
 
   const carRefs = [playerCarRef, botCarRef];
 
   return (
-    <Physics gravity={GRAVITY} timeStep={1/60}>
+    <Physics gravity={GRAVITY} timeStep={1/60} paused={phase === 'paused' || phase === 'menu'}>
       <Arena />
       <Ball ref={ballRef} />
       <Car
         ref={playerCarRef}
         team="blue"
-        startPosition={BLUE_SPAWN}
-        startRotationY={BLUE_SPAWN_ROTATION}
+        startPosition={KICKOFF_SPAWNS[0].blue as [number, number, number]}
+        startRotationY={KICKOFF_SPAWNS[0].blueRot}
         name="Player"
       />
       <Car
         ref={botCarRef}
         team="orange"
-        startPosition={ORANGE_SPAWN}
-        startRotationY={ORANGE_SPAWN_ROTATION}
+        startPosition={KICKOFF_SPAWNS[0].orange as [number, number, number]}
+        startRotationY={KICKOFF_SPAWNS[0].orangeRot}
         name="Bot"
       />
       <BoostPads carRefs={carRefs} />
@@ -110,7 +108,11 @@ export default function App() {
           <GameScene />
           <Environment preset="night" />
           <EffectComposer multisampling={4}>
-            <Bloom luminanceThreshold={1} mipmapBlur intensity={1.5} />
+            <Bloom luminanceThreshold={0.8} mipmapBlur intensity={1.5} />
+            <Vignette eskil={false} offset={0.1} darkness={0.8} />
+            <ChromaticAberration
+              offset={new THREE.Vector2(0.002, 0.002)}
+            />
           </EffectComposer>
         </Suspense>
       </Canvas>
@@ -118,6 +120,7 @@ export default function App() {
       {/* UI Layer */}
       <MainMenu />
       <HUD />
+      <Scoreboard />
       <InputHandler />
     </>
   );

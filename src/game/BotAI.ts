@@ -24,6 +24,7 @@ const EMPTY_INPUT: PlayerInput = {
   right: false,
   jump: false,
   boost: false,
+  drift: false,
   airRollLeft: false,
   airRollRight: false,
 };
