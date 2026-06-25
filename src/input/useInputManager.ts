@@ -60,6 +60,11 @@ export function useInputManager() {
         }
       }
 
+      // Horn
+      if (e.code === 'KeyH' && !e.repeat) {
+        import('../audio/AudioManager').then(m => m.audioManager.playHorn());
+      }
+
       // Quick Chat
       if (!e.repeat) {
         if (e.code === 'Digit1') useGameStore.getState().addChatMessage('Player', 'What a save!');

@@ -145,6 +145,96 @@ button:focus-visible {
   to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
+/* Speedometer */
+.hud-speed {
+  position: absolute;
+  bottom: 40px;
+  right: 220px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lens-dirt-overlay {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, transparent 50%, rgba(150, 100, 30, 0.2) 100%),
+              url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="10" cy="10" r="2" fill="rgba(255,255,255,0.05)"/><circle cx="50" cy="80" r="3" fill="rgba(255,255,255,0.03)"/><circle cx="80" cy="30" r="1.5" fill="rgba(255,255,255,0.04)"/></svg>');
+  background-size: 100% 100%, 200px 200px;
+  mix-blend-mode: screen;
+  z-index: 5; /* below UI */
+}
+
+.hud-speed {
+  background: rgba(0,0,0,0.5);
+  padding: 10px 20px;
+  border-radius: 10px;
+  border-left: 3px solid #ffcc00;
+  pointer-events: none;
+}
+.speed-value {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+}
+.speed-unit {
+  font-size: 1rem;
+  font-weight: bold;
+  color: rgba(255,255,255,0.6);
+}
+
+.boost-value {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  text-shadow: 0 0 10px rgba(255, 204, 0, 0.8);
+}
+.low-boost {
+  color: #ff3333;
+  text-shadow: 0 0 10px rgba(255, 51, 51, 0.8);
+  animation: pulse-red 0.5s infinite;
+}
+@keyframes pulse-red {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.1); text-shadow: 0 0 20px rgba(255, 51, 51, 1); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Match Timer */
+
+/* Match Events */
+.hud-events {
+  position: absolute;
+  top: 100px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+.event-item {
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  padding: 10px 20px;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: bold;
+  font-size: 1.2rem;
+  border-radius: 5px;
+  border-right: 4px solid #fff;
+  animation: slideLeft 0.3s ease-out;
+}
+@keyframes slideLeft {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
 /* Ball Cam Indicator */
 .hud-ballcam {
   position: absolute;
@@ -174,8 +264,43 @@ button:focus-visible {
   border: 2px solid #fff;
   pointer-events: auto;
 }
-.finished-title { font-size: 5rem; font-weight: 900; margin-bottom: 20px; }
-.finished-score { font-size: 4rem; font-weight: bold; margin-bottom: 40px; }
+.finished-title {
+  font-size: 5rem;
+  font-weight: 900;
+  text-shadow: 0 0 20px #fff;
+  margin-bottom: 20px;
+}
+.finished-score {
+  font-size: 4rem;
+  font-weight: 700;
+  color: #ffaa00;
+}
+.finished-winner {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: #00ffcc;
+  text-shadow: 0 0 10px #00ffcc;
+}
+.finished-stats table {
+  width: 600px;
+  margin-top: 20px;
+  border-collapse: collapse;
+  background: rgba(0, 0, 0, 0.5);
+  font-size: 1.2rem;
+}
+.finished-stats th {
+  padding: 10px;
+  border-bottom: 2px solid #fff;
+  color: #aaa;
+}
+.finished-stats td {
+  padding: 10px;
+  text-align: center;
+}
+.blue-row td { color: #00ccff; }
+.orange-row td { color: #ff9900; }
+
+.finished-instruction { margin-bottom: 40px; }
 .finished-btn {
   padding: 15px 40px;
   font-size: 1.5rem;

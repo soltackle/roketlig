@@ -28,18 +28,32 @@ export default function Scoreboard() {
         <div style={{ width: '40%', color: '#2196F3', fontWeight: 'bold', fontSize: '1.5rem' }}>BLUE TEAM</div>
         <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{blueScore}</div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <div style={{ width: '40%' }}>Player</div>
-        <div>Score: {blueScore * 100}</div>
+      <div style={{ 
+        display: 'flex', justifyContent: 'space-between', marginBottom: '20px',
+        background: 'linear-gradient(90deg, rgba(33,150,243,0.5) 0%, rgba(0,0,0,0) 100%)',
+        padding: '10px', borderRadius: '5px'
+      }}>
+        <div style={{ width: '40%', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '30px', height: '30px', background: '#2196F3', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>P</div>
+          Player
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center' }}>Score: {blueScore * 100}</div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginTop: '30px' }}>
         <div style={{ width: '40%', color: '#FF6D00', fontWeight: 'bold', fontSize: '1.5rem' }}>ORANGE TEAM</div>
         <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{orangeScore}</div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <div style={{ width: '40%' }}>Bot</div>
-        <div>Score: {orangeScore * 100}</div>
+      <div style={{ 
+        display: 'flex', justifyContent: 'space-between',
+        background: 'linear-gradient(90deg, rgba(255,109,0,0.5) 0%, rgba(0,0,0,0) 100%)',
+        padding: '10px', borderRadius: '5px'
+      }}>
+        <div style={{ width: '40%', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '30px', height: '30px', background: '#FF6D00', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>B</div>
+          Bot
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center' }}>Score: {orangeScore * 100}</div>
       </div>
     </div>
   );

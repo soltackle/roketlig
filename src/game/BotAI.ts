@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type { PlayerInput, Team } from '../types';
 import type { CarHandle } from './Car';
 import type { BallHandle } from './Ball';
-import { ARENA_LENGTH, GOAL_WIDTH, GOAL_HEIGHT } from '../constants';
+import { ARENA_LENGTH, ARENA_WIDTH, GOAL_WIDTH, GOAL_HEIGHT, LARGE_BOOST_POSITIONS } from '../constants';
 
 export type BotDifficulty = 'easy' | 'medium' | 'hard';
 
@@ -118,6 +118,14 @@ export function updateBotAI(
   );
   predictedBallPos.y = Math.max(1, predictedBallPos.y);
 
+  // Wall Prediction (bounce)
+  if (Math.abs(predictedBallPos.x) > ARENA_WIDTH / 2) {
+    predictedBallPos.x = Math.sign(predictedBallPos.x) * ARENA_WIDTH - predictedBallPos.x;
+  }
+  if (Math.abs(predictedBallPos.z) > ARENA_LENGTH / 2 && Math.abs(predictedBallPos.x) > GOAL_WIDTH / 2) {
+    predictedBallPos.z = Math.sign(predictedBallPos.z) * ARENA_LENGTH - predictedBallPos.z;
+  }
+
   // Decide behavior: attack, defend, or go for boost
   const ballToOwnGoalDist = Math.abs(ballPos.z - ownGoalZ);
   const ballToTargetGoalDist = Math.abs(ballPos.z - targetGoalZ);
@@ -128,16 +136,37 @@ export function updateBotAI(
 
   let targetPos: THREE.Vector3;
 
-  if (isBallComingToGoal && ballToOwnGoalDist < 30) {
-    // DEFENSIVE: Get between ball and own goal
-    targetPos = new THREE.Vector3(
-      ballPos.x * 0.5,
-      1,
-      ownGoalZ * 0.7
-    );
-  } else if (botCar.getBoost() < 20 && !isBallComingToGoal) {
-    // GET BOOST: Find nearest boost pad (simplified - go to center)
-    targetPos = predictedBallPos.clone();
+  const isKickoff = Math.abs(ballPos.x) < 0.5 && Math.abs(ballPos.z) < 0.5 && carPos.distanceTo(ballPos) > 10;
+
+  if (isKickoff) {
+    // KICKOFF: Boost straight to the ball
+    targetPos = ballPos.clone();
+  } else if (isBallComingToGoal || (ballToOwnGoalDist < 40 && carToOwnGoalDist < 20)) {
+    // GOALIE ROTATION: Protect the net
+    if (ballToOwnGoalDist < 15) {
+      // Clear the ball
+      targetPos = predictedBallPos.clone();
+    } else {
+      // Wait in net
+      targetPos = new THREE.Vector3(
+        Math.max(-5, Math.min(5, ballPos.x * 0.5)),
+        1,
+        ownGoalZ > 0 ? ownGoalZ - 2 : ownGoalZ + 2
+      );
+    }
+  } else if (botCar.getBoost() < 20 && !isBallComingToGoal && !isKickoff) {
+    // GET BOOST: Find nearest large boost pad
+    let nearestDist = Infinity;
+    let nearestPad = new THREE.Vector3(0, 0, 0);
+    for (const pos of LARGE_BOOST_POSITIONS) {
+      const padPos = new THREE.Vector3(pos[0], pos[1], pos[2]);
+      const dist = carPos.distanceTo(padPos);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestPad = padPos;
+      }
+    }
+    targetPos = nearestPad;
   } else {
     // ATTACK: Aim to hit ball toward opponent goal
     const ballToGoal = new THREE.Vector3(
@@ -187,17 +216,39 @@ export function updateBotAI(
   }
 
   // Boost usage
-  if (distToBall > 15 && botCar.getBoost() > 10 && Math.random() < settings.boostUsage && input.forward) {
+  if (isKickoff) {
     input.boost = true;
-  }
-  // Boost toward ball when close
-  if (distToBall < 8 && distToBall > 3 && botCar.getBoost() > 5 && dot > 0.7 && Math.random() < settings.boostUsage) {
-    input.boost = true;
+    // Front flip if somewhat close
+    if (distToBall < 25 && distToBall > 15 && isGrounded) {
+      input.jump = true;
+      input.forward = true;
+    } else if (distToBall < 14 && distToBall > 10 && !isGrounded) {
+      input.jump = true;
+      input.forward = true;
+    }
+  } else {
+    if (distToBall > 15 && botCar.getBoost() > 10 && Math.random() < settings.boostUsage && input.forward) {
+      input.boost = true;
+    }
+    // Boost toward ball when close
+    if (distToBall < 8 && distToBall > 3 && botCar.getBoost() > 5 && dot > 0.7 && Math.random() < settings.boostUsage) {
+      input.boost = true;
+    }
   }
 
   // Jump when ball is above ground
-  if (isGrounded && distToBall < 5 && predictedBallPos.y > 2 && predictedBallPos.y < 6) {
+  if (!isKickoff && isGrounded && distToBall < 5 && predictedBallPos.y > 2 && predictedBallPos.y < 6) {
     input.jump = true;
+  }
+
+  // Bot Aerials
+  if (!isKickoff && isGrounded && distToBall < 15 && predictedBallPos.y >= 6 && botCar.getBoost() > 20) {
+    input.jump = true;
+  }
+  if (!isKickoff && !isGrounded && predictedBallPos.y > 4 && carPos.y < predictedBallPos.y - 1 && botCar.getBoost() > 0) {
+    // Tilt back and boost to fly
+    input.backward = true;
+    input.boost = true;
   }
 
   // Dodge at ball for powerful hit

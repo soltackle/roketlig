@@ -4,7 +4,7 @@
 import { useRef, forwardRef, useImperativeHandle, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CuboidCollider, useRapier } from '@react-three/rapier';
-import { Html } from '@react-three/drei';
+import { Html, Trail } from '@react-three/drei';
 import type { RapierRigidBody } from '@react-three/rapier';
 import * as THREE from 'three';
 import {
@@ -398,6 +398,9 @@ const Car = forwardRef<CarHandle, CarProps>(({ team, startPosition, startRotatio
       const storeIsSuper = useGameStore.getState().isSupersonic;
       if (isSuper !== storeIsSuper) {
         useGameStore.getState().setIsSupersonic(isSuper);
+        if (isSuper) {
+          audioManager.playSonicBoom();
+        }
       }
     }
 
@@ -410,7 +413,7 @@ const Car = forwardRef<CarHandle, CarProps>(({ team, startPosition, startRotatio
     
     // Update engine sound for player
     if (name === 'Player') {
-      audioManager.updateEngine(speed, boostActive.current);
+      audioManager.updateEngine(speed, boostActive.current, onGround);
     }
 
     // Update taillights (Brake lights)
@@ -483,6 +486,16 @@ const Car = forwardRef<CarHandle, CarProps>(({ team, startPosition, startRotatio
         colliders={false}
         name={`car-${name}`}
         enabledRotations={[true, true, true]}
+        onCollisionEnter={(payload) => {
+          if (payload.other.rigidBodyObject?.name?.startsWith('car-') || payload.other.rigidBodyObject?.name?.startsWith('wall-')) {
+            // Rate limit bumps to avoid audio spam
+            const now = performance.now();
+            if (now - (window as any).lastBumpTime > 200 || !(window as any).lastBumpTime) {
+              audioManager.playHit(20);
+              (window as any).lastBumpTime = now;
+            }
+          }
+        }}
       >
         <CuboidCollider args={[CAR_WIDTH / 2, CAR_HEIGHT / 2, CAR_LENGTH / 2]} position={[0, CAR_HEIGHT / 2, 0]} />
       </RigidBody>
@@ -562,6 +575,14 @@ const Car = forwardRef<CarHandle, CarProps>(({ team, startPosition, startRotatio
           <boxGeometry args={[0.3, 0.15, 0.05]} />
           <meshStandardMaterial emissive="#ff0000" emissiveIntensity={1} color="#ff0000" />
         </mesh>
+
+        {/* Tire Tracks (Trails) */}
+        <Trail width={0.3} length={30} color={new THREE.Color(teamColor)} attenuation={(t) => t * t} decay={1}>
+          <mesh position={[-CAR_WIDTH * 0.5, 0.15, CAR_LENGTH * 0.3]} visible={false} />
+        </Trail>
+        <Trail width={0.3} length={30} color={new THREE.Color(teamColor)} attenuation={(t) => t * t} decay={1}>
+          <mesh position={[CAR_WIDTH * 0.5, 0.15, CAR_LENGTH * 0.3]} visible={false} />
+        </Trail>
 
         {/* Name tag */}
         {/* Will be rendered via HTML overlay */}

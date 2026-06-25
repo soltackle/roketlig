@@ -1,15 +1,40 @@
 // ============================================
 // ARENA - 3D Stadium with Neon Cyberpunk Style
 // ============================================
-import { useFrame } from '@react-three/fiber';
+import { useFrame, extend } from '@react-three/fiber';
 import { CuboidCollider, RigidBody } from '@react-three/rapier';
-import { Grid, Text } from '@react-three/drei';
+import { Grid, Text, shaderMaterial } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '../stores/gameStore';
 import {
   ARENA_WIDTH, ARENA_LENGTH, ARENA_HEIGHT, WALL_THICKNESS,
   GOAL_WIDTH, GOAL_HEIGHT, GOAL_DEPTH,
 } from '../constants';
+
+// --- Grass Shader ---
+const GrassMaterial = shaderMaterial(
+  { color1: new THREE.Color('#0a3010'), color2: new THREE.Color('#0d4015') },
+  // vertex shader
+  `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  // fragment shader
+  `
+    uniform vec3 color1;
+    uniform vec3 color2;
+    varying vec2 vUv;
+    void main() {
+      float stripe = step(0.5, fract(vUv.y * 15.0));
+      vec3 color = mix(color1, color2, stripe);
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `
+);
+extend({ GrassMaterial });
 
 const WALL_HEIGHT = 15;
 
@@ -43,6 +68,9 @@ const orangeGoalMaterial = new THREE.MeshStandardMaterial({
 });
 
 export default function Arena() {
+  const settings = useGameStore((s) => s.settings);
+  const shadowRes = settings.graphicsQuality === 'high' ? 2048 : 512;
+
   return (
     <group>
       {/* Lights */}
@@ -51,7 +79,7 @@ export default function Arena() {
         position={[100, 100, 50]}
         castShadow
         intensity={1}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[shadowRes, shadowRes]}
         shadow-camera-left={-60}
         shadow-camera-right={60}
         shadow-camera-top={100}
@@ -66,8 +94,10 @@ export default function Arena() {
 
       {/* Floor */}
       <RigidBody type="fixed" colliders="cuboid" restitution={0.2} friction={0.5}>
-        <mesh position={[0, -1, 0]} receiveShadow material={floorMaterial}>
+        <mesh position={[0, -1, 0]} receiveShadow>
           <boxGeometry args={[ARENA_WIDTH, 2, ARENA_LENGTH]} />
+          {/* @ts-ignore */}
+          <grassMaterial />
         </mesh>
       </RigidBody>
 
@@ -102,14 +132,19 @@ export default function Arena() {
         <mesh position={[-ARENA_WIDTH / 2 - WALL_THICKNESS / 2, WALL_HEIGHT / 2, 0]} material={wallMaterial}>
           <boxGeometry args={[WALL_THICKNESS, WALL_HEIGHT, ARENA_LENGTH]} />
         </mesh>
+        <gridHelper args={[ARENA_LENGTH, 20, "#0088ff", "#002244"]} position={[-ARENA_WIDTH / 2, WALL_HEIGHT / 2, 0]} rotation={[0, 0, Math.PI / 2]} />
+        
         {/* Right Wall */}
         <mesh position={[ARENA_WIDTH / 2 + WALL_THICKNESS / 2, WALL_HEIGHT / 2, 0]} material={wallMaterial}>
           <boxGeometry args={[WALL_THICKNESS, WALL_HEIGHT, ARENA_LENGTH]} />
         </mesh>
+        <gridHelper args={[ARENA_LENGTH, 20, "#ff8800", "#442200"]} position={[ARENA_WIDTH / 2, WALL_HEIGHT / 2, 0]} rotation={[0, 0, Math.PI / 2]} />
+
         {/* Top Wall (Ceiling) */}
         <mesh position={[0, ARENA_HEIGHT + WALL_THICKNESS / 2, 0]} material={wallMaterial}>
           <boxGeometry args={[ARENA_WIDTH + WALL_THICKNESS * 2, WALL_THICKNESS, ARENA_LENGTH + WALL_THICKNESS * 2]} />
         </mesh>
+        <gridHelper args={[Math.max(ARENA_WIDTH, ARENA_LENGTH), 30, "#ffffff", "#222222"]} position={[0, ARENA_HEIGHT, 0]} />
         
         {/* Back Wall (Blue Side) */}
         <CuboidCollider args={[ARENA_WIDTH / 2, WALL_HEIGHT / 2, WALL_THICKNESS / 2]} position={[0, WALL_HEIGHT / 2, -ARENA_LENGTH / 2 - WALL_THICKNESS / 2]} />

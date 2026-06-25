@@ -1,7 +1,7 @@
 import { Suspense, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
-import { EffectComposer, Bloom, Vignette, ChromaticAberration } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Vignette, ChromaticAberration, DepthOfField } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { Environment } from '@react-three/drei';
 import { useGameStore } from './stores/gameStore';
@@ -51,21 +51,52 @@ function GameScene() {
         startRotationY={KICKOFF_SPAWNS[0].blueRot}
         name="Player"
       />
-      <Car
-        ref={botCarRef}
-        team="orange"
-        startPosition={KICKOFF_SPAWNS[0].orange as [number, number, number]}
-        startRotationY={KICKOFF_SPAWNS[0].orangeRot}
-        name="Bot"
-      />
+      {useGameStore.getState().matchSettings.mode !== 'freeplay' && (
+        <Car
+          ref={botCarRef}
+          team="orange"
+          startPosition={KICKOFF_SPAWNS[0].orange as [number, number, number]}
+          startRotationY={KICKOFF_SPAWNS[0].orangeRot}
+          name="Bot"
+        />
+      )}
       <BoostPads carRefs={carRefs} />
       <GameCamera carRef={playerCarRef} ballRef={ballRef} />
+      <BallIndicator playerCarRef={playerCarRef} ballRef={ballRef} />
       <GameManager
         playerCarRef={playerCarRef}
         botCarRef={botCarRef}
         ballRef={ballRef}
       />
     </Physics>
+  );
+}
+
+function BallIndicator({ playerCarRef, ballRef }: { playerCarRef: React.RefObject<CarHandle | null>, ballRef: React.RefObject<BallHandle | null> }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const ballCamEnabled = useGameStore(s => s.ballCamEnabled);
+  
+  useFrame(() => {
+    if (ballCamEnabled || !meshRef.current || !playerCarRef.current || !ballRef.current) {
+      if (meshRef.current) meshRef.current.visible = false;
+      return;
+    }
+    const playerPos = playerCarRef.current.getPosition();
+    const ballPos = ballRef.current.getPosition();
+    
+    // Check if ball is roughly on screen (heuristic: we check if camera faces it, but for simplicity we just always show it when ball cam is off!)
+    // A real indicator would do screen projection.
+    meshRef.current.visible = true;
+    meshRef.current.position.set(playerPos.x, playerPos.y + 4, playerPos.z);
+    meshRef.current.lookAt(ballPos.x, ballPos.y, ballPos.z);
+    meshRef.current.rotateX(Math.PI / 2); // Point cone forward
+  });
+  
+  return (
+    <mesh ref={meshRef} visible={false}>
+      <coneGeometry args={[0.6, 2, 8]} />
+      <meshBasicMaterial color="#ffff00" transparent opacity={0.6} depthTest={false} />
+    </mesh>
   );
 }
 
@@ -76,13 +107,14 @@ function InputHandler() {
 
 export default function App() {
   const phase = useGameStore((s) => s.phase);
+  const settings = useGameStore((s) => s.settings);
 
   return (
     <>
       {/* 3D Canvas */}
       <Canvas
         shadows
-        camera={{ fov: 75, near: 0.1, far: 500 }}
+        camera={{ fov: settings.cameraFov, near: 0.1, far: 500 }}
         style={{
           position: 'fixed',
           top: 0,
@@ -107,15 +139,21 @@ export default function App() {
           )}
           <GameScene />
           <Environment preset="night" />
-          <EffectComposer multisampling={4}>
-            <Bloom luminanceThreshold={0.8} mipmapBlur intensity={1.5} />
-            <Vignette eskil={false} offset={0.1} darkness={0.8} />
-            <ChromaticAberration
-              offset={new THREE.Vector2(0.002, 0.002)}
-            />
-          </EffectComposer>
+          {settings.graphicsQuality === 'high' && (
+            <EffectComposer multisampling={4}>
+              <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} height={300} intensity={1.5} />
+              <Vignette eskil={false} offset={0.1} darkness={1.1} />
+              <ChromaticAberration offset={new THREE.Vector2(0.002, 0.002)} />
+              <DepthOfField focusDistance={0.02} focalLength={0.1} bokehScale={2} height={480} />
+            </EffectComposer>
+          )}
         </Suspense>
       </Canvas>
+
+      {/* Lens Dirt Effect */}
+      {settings.graphicsQuality === 'high' && phase === 'playing' && (
+        <div className="lens-dirt-overlay" />
+      )}
 
       {/* UI Layer */}
       <MainMenu />

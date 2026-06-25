@@ -72,6 +72,10 @@ interface GameStore {
   chatMessages: { sender: string; message: string; time: number }[];
   addChatMessage: (sender: string, message: string) => void;
 
+  // Match Events (Save, Shot, Demolition)
+  matchEvents: { text: string; type: string; id: number }[];
+  addMatchEvent: (text: string, type: string) => void;
+
   // Scoreboard visibility
   scoreboardVisible: boolean;
   setScoreboardVisible: (val: boolean) => void;
@@ -82,6 +86,8 @@ interface GameStore {
     sfxVolume: number;
     musicVolume: number;
     graphicsQuality: 'low' | 'medium' | 'high';
+    cameraFov: number;
+    cameraDistance: number;
   };
   updateSettings: (settings: Partial<GameStore['settings']>) => void;
 
@@ -167,6 +173,15 @@ export const useGameStore = create<GameStore>((set) => ({
       ],
     })),
 
+  matchEvents: [],
+  addMatchEvent: (text, type) =>
+    set((state) => ({
+      matchEvents: [
+        ...state.matchEvents.slice(-4), // keep last 5
+        { text, type, id: Date.now() + Math.random() },
+      ],
+    })),
+
   scoreboardVisible: false,
   setScoreboardVisible: (val) => set({ scoreboardVisible: val }),
 
@@ -175,6 +190,8 @@ export const useGameStore = create<GameStore>((set) => ({
     sfxVolume: 100,
     musicVolume: 50,
     graphicsQuality: 'high',
+    cameraFov: 75,
+    cameraDistance: 15,
   },
   updateSettings: (settings) =>
     set((state) => ({

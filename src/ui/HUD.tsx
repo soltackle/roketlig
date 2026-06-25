@@ -1,6 +1,7 @@
 // ============================================
 // HUD - In-Game Heads-Up Display
 // ============================================
+import { useState, useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import './HUD.css';
 
@@ -11,6 +12,43 @@ function formatTime(seconds: number): string {
 }
 
 export default function HUD() {
+  const [hasGamepad, setHasGamepad] = useState(false);
+
+  useEffect(() => {
+    const checkGamepad = () => setHasGamepad(navigator.getGamepads().some(gp => gp !== null));
+    window.addEventListener('gamepadconnected', checkGamepad);
+    window.addEventListener('gamepaddisconnected', checkGamepad);
+    // Check initially
+    checkGamepad();
+    return () => {
+      window.removeEventListener('gamepadconnected', checkGamepad);
+      window.removeEventListener('gamepaddisconnected', checkGamepad);
+    };
+  }, []);
+
+  const countdownTimer = useGameStore((s) => s.countdownTimer);
+  const phase = useGameStore((s) => s.phase);
+
+  useEffect(() => {
+    if (phase === 'countdown') {
+      const ceilTime = Math.ceil(countdownTimer);
+      if (ceilTime > 0 && ceilTime <= 3 && Math.abs(countdownTimer - ceilTime) < 0.1) {
+        // Prevent multiple plays per second
+        const lastAnnounced = (window as any).lastCountdownAnnounced;
+        if (lastAnnounced !== ceilTime) {
+          (window as any).lastCountdownAnnounced = ceilTime;
+          import('../audio/AudioManager').then(m => m.audioManager.playCountdownBeep());
+        }
+      } else if (ceilTime === 0) {
+        const lastAnnounced = (window as any).lastCountdownAnnounced;
+        if (lastAnnounced !== 0) {
+          (window as any).lastCountdownAnnounced = 0;
+          import('../audio/AudioManager').then(m => m.audioManager.playCountdownGo());
+        }
+      }
+    }
+  }, [countdownTimer, phase]);
+
   const blueScore = useGameStore((s) => s.blueScore);
   const orangeScore = useGameStore((s) => s.orangeScore);
   const timeRemaining = useGameStore((s) => s.timeRemaining);
@@ -19,11 +57,10 @@ export default function HUD() {
   const playerSpeed = useGameStore((s) => s.playerSpeed);
   const isSupersonic = useGameStore((s) => s.isSupersonic);
   const ballCamEnabled = useGameStore((s) => s.ballCamEnabled);
-  const phase = useGameStore((s) => s.phase);
   const lastGoalScoredBy = useGameStore((s) => s.lastGoalScoredBy);
   const lastGoalScorerName = useGameStore((s) => s.lastGoalScorerName);
-  const countdownTimer = useGameStore((s) => s.countdownTimer);
   const chatMessages = useGameStore((s) => s.chatMessages);
+  const matchEvents = useGameStore((s) => s.matchEvents);
 
   if (phase === 'menu' || phase === 'lobby') return null;
 
@@ -36,7 +73,8 @@ export default function HUD() {
       <div className={`speed-lines ${isSupersonic && phase === 'playing' ? 'active' : ''}`}></div>
       <div className="hud-container">
       {/* Score Bar */}
-      <div className="hud-score-bar">
+      {useGameStore.getState().matchSettings.mode !== 'freeplay' && (
+        <div className="hud-score-bar">
         <div className="hud-score blue-score">
           <span className="team-label">BLUE</span>
           <span className="score-value">{blueScore}</span>
@@ -49,6 +87,16 @@ export default function HUD() {
           <span className="score-value">{orangeScore}</span>
           <span className="team-label">ORANGE</span>
         </div>
+      </div>
+      )}
+
+      {/* Match Events */}
+      <div className="hud-events">
+        {matchEvents.filter(e => Date.now() - e.id < 4000).map(evt => (
+          <div key={evt.id} className="event-item">
+            {evt.text}
+          </div>
+        ))}
       </div>
 
       {/* Boost Meter */}
@@ -81,7 +129,7 @@ export default function HUD() {
             }}
           />
         </svg>
-        <div className="boost-value">{boostPercent}</div>
+        <div className={`boost-value ${boostPercent <= 20 ? 'low-boost' : ''}`}>{boostPercent}</div>
       </div>
 
       {/* Speed */}
@@ -128,13 +176,47 @@ export default function HUD() {
         </div>
       )}
 
-      {/* Game Finished */}
+      {/* Finished Menu Overlay */}
       {phase === 'finished' && (
         <div className="hud-finished">
-          <div className="finished-title">
-            {blueScore > orangeScore ? '🏆 VICTORY!' : blueScore < orangeScore ? '💀 DEFEAT' : 'DRAW'}
+          <div className="finished-title">MATCH FINISHED</div>
+          <div className="finished-score">{blueScore} - {orangeScore}</div>
+          <div className="finished-winner">{blueScore > orangeScore ? 'BLUE TEAM WINS' : 'ORANGE TEAM WINS'}</div>
+          
+          <div className="finished-stats">
+            <table>
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Score</th>
+                  <th>Goals</th>
+                  <th>Assists</th>
+                  <th>Saves</th>
+                  <th>Shots</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="blue-row">
+                  <td>Player</td>
+                  <td>{blueScore * 100 + 50}</td>
+                  <td>{blueScore}</td>
+                  <td>0</td>
+                  <td>1</td>
+                  <td>{blueScore + 2}</td>
+                </tr>
+                <tr className="orange-row">
+                  <td>Bot</td>
+                  <td>{orangeScore * 100 + 20}</td>
+                  <td>{orangeScore}</td>
+                  <td>0</td>
+                  <td>0</td>
+                  <td>{orangeScore + 1}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div className="finished-score">{blueScore} — {orangeScore}</div>
+
+          <div className="finished-instruction">Press ESC to return to Menu</div>
           <button className="finished-btn" onClick={() => {
             useGameStore.getState().resetMatch();
             useGameStore.getState().setPhase('menu');
@@ -158,10 +240,23 @@ export default function HUD() {
 
       {/* Controls Help */}
       <div className="hud-controls">
-        <span>WASD: Drive</span>
-        <span>Space: Jump</span>
-        <span>Shift: Boost</span>
-        <span>Y: Ball Cam</span>
+        {hasGamepad ? (
+          <>
+            <span>R2/L2: Drive</span>
+            <span>A: Jump</span>
+            <span>B: Boost</span>
+            <span>Y: Ball Cam</span>
+            <span>X: Drift</span>
+          </>
+        ) : (
+          <>
+            <span>WASD: Drive</span>
+            <span>Space: Jump</span>
+            <span>Shift: Boost</span>
+            <span>Y: Ball Cam</span>
+            <span>Left Click: Drift</span>
+          </>
+        )}
       </div>
     </div>
     </>

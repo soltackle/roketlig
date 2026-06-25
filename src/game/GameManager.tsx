@@ -124,8 +124,10 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
         if (blueScore === orangeScore) {
           setOvertime(true);
           setPhase('overtime');
+          audioManager.playOvertimeAlert();
         } else {
           setPhase('finished');
+          audioManager.playScoreScreenMusic();
           return;
         }
       } else {
@@ -159,8 +161,10 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
     if (scoringTeam) {
       const scorerName = scoringTeam === 'blue' ? 'Player' : 'Bot';
       addGoal(scoringTeam, scorerName);
+      useGameStore.getState().addMatchEvent(`${scorerName.toUpperCase()} SCORED!`, 'goal');
       goalReplayTimer.current = GOAL_REPLAY_DURATION;
       audioManager.playGoal();
+      audioManager.playCrowdCheer();
 
       // Goal Explosion Shockwave
       const ballPos = ballRef.current?.getPosition();
@@ -185,7 +189,10 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
 
       // In overtime, any goal ends the game
       if (isOvertime) {
-        setTimeout(() => setPhase('finished'), GOAL_REPLAY_DURATION * 1000);
+        setTimeout(() => {
+          setPhase('finished');
+          audioManager.playScoreScreenMusic();
+        }, GOAL_REPLAY_DURATION * 1000);
       }
     }
 
@@ -203,11 +210,13 @@ export default function GameManager({ playerCarRef, botCarRef, ballRef }: GameMa
           botCarRef.current.demolish();
           audioManager.playHit(100);
           useGameStore.getState().addCameraShake(3);
+          useGameStore.getState().addMatchEvent("PLAYER DEMOLISHED BOT", 'demolition');
         }
         if (botSpeed > 42 && !playerCarRef.current.isDemolished()) {
           playerCarRef.current.demolish();
           audioManager.playHit(100);
           useGameStore.getState().addCameraShake(3);
+          useGameStore.getState().addMatchEvent("BOT DEMOLISHED PLAYER", 'demolition');
         }
       }
     }

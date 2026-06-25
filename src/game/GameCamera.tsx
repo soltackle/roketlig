@@ -29,12 +29,19 @@ export default function GameCamera({ carRef, ballRef }: GameCameraProps) {
       useGameStore.getState().setCameraShake(Math.max(0, shake - delta * 10));
     }
 
-    if (phase === 'menu') {
+    if (phase === 'menu' || phase === 'lobby') {
       const time = performance.now() * 0.0005;
       const targetPos = new THREE.Vector3(Math.sin(time) * 40, 20, Math.cos(time) * 40);
       const targetLook = new THREE.Vector3(0, 0, 0);
       currentPos.current.lerp(targetPos, delta * 2);
       currentLookAt.current.lerp(targetLook, delta * 2);
+    } else if (phase === 'goal_scored' || phase === 'finished') {
+      const ballPos = ballRef.current?.getPosition() || new THREE.Vector3();
+      const time = performance.now() * 0.001;
+      const radius = 20;
+      const targetPos = new THREE.Vector3(ballPos.x + Math.sin(time) * radius, 15, ballPos.z + Math.cos(time) * radius);
+      currentPos.current.lerp(targetPos, delta * 2);
+      currentLookAt.current.lerp(ballPos, delta * 5);
     } else {
       if (!carRef.current) return;
 
@@ -56,6 +63,7 @@ export default function GameCamera({ carRef, ballRef }: GameCameraProps) {
       // Direction from car to ball
       const carToBall = new THREE.Vector3().subVectors(ballPos, carPos).normalize();
       // Camera goes behind car (opposite of ball direction)
+      const CAMERA_DISTANCE = useGameStore.getState().settings.cameraDistance || 15;
       const cameraOffset = carToBall.clone().negate().multiplyScalar(CAMERA_DISTANCE);
       cameraOffset.y = CAMERA_HEIGHT;
 
@@ -68,10 +76,13 @@ export default function GameCamera({ carRef, ballRef }: GameCameraProps) {
     } else {
       // Car Cam: camera behind car, looking forward
       const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(carRot);
-      const targetPos = new THREE.Vector3()
-        .copy(carPos)
-        .add(backward.multiplyScalar(CAMERA_DISTANCE))
-        .add(new THREE.Vector3(0, CAMERA_HEIGHT, 0));
+      const CAMERA_DISTANCE = useGameStore.getState().settings.cameraDistance || 15;
+      
+      const targetPos = new THREE.Vector3().addVectors(
+        carPos,
+        backward.multiplyScalar(CAMERA_DISTANCE)
+      );
+      targetPos.y += CAMERA_HEIGHT;
 
       // Keep camera above ground
       targetPos.y = Math.max(targetPos.y, 3);

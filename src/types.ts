@@ -69,6 +69,6 @@ export interface GameState {
 }
 
 export interface MatchSettings {
-  mode: '1v1' | '2v2';
+  mode: '1v1' | '2v2' | 'freeplay';
   botDifficulty: 'easy' | 'medium' | 'hard';
 }

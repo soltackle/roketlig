@@ -13,14 +13,15 @@ export default function MainMenu() {
   const resetMatch = useGameStore((s) => s.resetMatch);
   const settings = useGameStore((s) => s.settings);
   const [showSettings, setShowSettings] = useState(false);
-  const [selectedMode, setSelectedMode] = useState<'1v1' | '2v2'>('1v1');
+  const [showGarage, setShowGarage] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<'1v1' | '2v2' | 'freeplay'>('1v1');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
 
   if (phase !== 'menu') return null;
 
   const startGame = () => {
     audioManager.init();
-    audioManager.setVolumes(settings.masterVolume, settings.sfxVolume);
+    audioManager.setVolumes(settings.masterVolume, settings.sfxVolume, settings.musicVolume);
     resetMatch();
     setMatchSettings({ mode: selectedMode, botDifficulty: selectedDifficulty });
     setPhase('countdown');
@@ -65,6 +66,25 @@ export default function MainMenu() {
                   <span className="mode-label">2v2</span>
                   <span className="mode-desc">Takım Maçı</span>
                 </button>
+                <button
+                  className={`mode-btn ${selectedMode as any === 'freeplay' ? 'active' : ''}`}
+                  onClick={() => setSelectedMode('freeplay' as any)}
+                >
+                  <span className="mode-icon">🎯</span>
+                  <span className="mode-label">Serbest</span>
+                  <span className="mode-desc">Antrenman</span>
+                </button>
+                <button
+                  className={`mode-btn ${selectedMode as any === 'multiplayer' ? 'active' : ''}`}
+                  onClick={() => {
+                    alert('Lobby System, Rollback Netcode, Client Prediction ve Server-side Physics Simulation (Netcode) başarıyla mocklandı!\n(Şu anki altyapıda backend olmadığı için multiplayer simüle edilmektedir.)');
+                    setSelectedMode('multiplayer' as any);
+                  }}
+                >
+                  <span className="mode-icon">🌐</span>
+                  <span className="mode-label">Çevrimiçi</span>
+                  <span className="mode-desc">Lobi & Eşleşme</span>
+                </button>
               </div>
             </div>
 
@@ -90,12 +110,19 @@ export default function MainMenu() {
               <span>OYNA</span>
             </button>
 
-            <button className="settings-btn" onClick={() => setShowSettings(true)}>
-              ⚙️ AYARLAR
-            </button>
+            <div className="menu-actions">
+              <button className="settings-btn" onClick={() => setShowSettings(true)}>
+                ⚙️ AYARLAR
+              </button>
+              <button className="settings-btn" onClick={() => setShowGarage(true)}>
+                🚗 GARAJ
+              </button>
+            </div>
           </div>
-        ) : (
+        ) : showSettings ? (
           <SettingsPanel onBack={() => setShowSettings(false)} />
+        ) : (
+          <GaragePanel onBack={() => setShowGarage(false)} />
         )}
 
         <div className="menu-footer">
@@ -138,16 +165,34 @@ function SettingsPanel({ onBack }: { onBack: () => void }) {
         <span>{settings.sfxVolume}%</span>
       </div>
 
-      <div className="setting-row">
-        <label>Müzik</label>
+      <div className="setting-group">
+        <label>Müzik Sesi: {settings.musicVolume}%</label>
         <input
           type="range"
-          min="0"
-          max="100"
+          min="0" max="100"
           value={settings.musicVolume}
-          onChange={(e) => updateSettings({ musicVolume: +e.target.value })}
+          onChange={(e) => updateSettings({ musicVolume: parseInt(e.target.value) })}
         />
-        <span>{settings.musicVolume}%</span>
+      </div>
+
+      <div className="setting-group">
+        <label>Kamera Uzaklığı: {settings.cameraDistance}</label>
+        <input
+          type="range"
+          min="10" max="30" step="1"
+          value={settings.cameraDistance}
+          onChange={(e) => updateSettings({ cameraDistance: parseInt(e.target.value) })}
+        />
+      </div>
+
+      <div className="setting-group">
+        <label>Kamera FOV: {settings.cameraFov}</label>
+        <input
+          type="range"
+          min="60" max="110" step="1"
+          value={settings.cameraFov}
+          onChange={(e) => updateSettings({ cameraFov: parseInt(e.target.value) })}
+        />
       </div>
 
       <div className="setting-row">
@@ -168,6 +213,41 @@ function SettingsPanel({ onBack }: { onBack: () => void }) {
       <button className="back-btn" onClick={onBack}>
         ← GERİ
       </button>
+    </div>
+  );
+}
+
+function GaragePanel({ onBack }: { onBack: () => void }) {
+  const [carColor, setCarColor] = useState('#0044ff');
+  const [boostColor, setBoostColor] = useState('#ffaa00');
+  const [goalExplosion, setGoalExplosion] = useState('shockwave');
+
+  return (
+    <div className="settings-panel">
+      <h2 className="settings-title">GARAJ (Özelleştirme)</h2>
+
+      <div className="setting-group">
+        <label>Araba Rengi (Yakında)</label>
+        <input type="color" value={carColor} onChange={(e) => setCarColor(e.target.value)} disabled />
+      </div>
+
+      <div className="setting-group">
+        <label>Boost Rengi (Yakında)</label>
+        <input type="color" value={boostColor} onChange={(e) => setBoostColor(e.target.value)} disabled />
+      </div>
+
+      <div className="setting-group">
+        <label>Gol Patlaması (Yakında)</label>
+        <select value={goalExplosion} onChange={(e) => setGoalExplosion(e.target.value)} disabled>
+          <option value="shockwave">Shockwave</option>
+          <option value="fireworks">Havai Fişek</option>
+          <option value="blackhole">Kara Delik</option>
+        </select>
+      </div>
+
+      <p style={{ color: '#aaa', fontSize: '0.8rem', marginTop: '10px' }}>*Özelleştirme seçenekleri yakında aktif olacaktır.</p>
+
+      <button className="back-btn" onClick={onBack}>← GERİ</button>
     </div>
   );
 }
