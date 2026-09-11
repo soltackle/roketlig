@@ -13,6 +13,7 @@ kodu eklenecek.
 |---|---|
 | [docs/01-hbys-veri-kaynaklari.md](docs/01-hbys-veri-kaynaklari.md) | HBYS'den hangi verinin nasıl okunabildiği |
 | [docs/02-form-analizi.md](docs/02-form-analizi.md) | PDF formunun yapısı, işaretleme yöntemi, istatistik notları |
+| [docs/03-ilk-surum-plani.md](docs/03-ilk-surum-plani.md) | Mimari, veri kaydı biçimi, yapım sırası, ön koşullar |
 
 ## Çözümleme çıktıları
 
