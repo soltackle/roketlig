@@ -1,7 +1,7 @@
 # İlk sürüm planı
 
 Kararlar: ana klasör izni · "fikrim yok" cevapları ortalama dışı · rapor
-KKY.FR.06 resmî düzeninde.
+eklentinin kendi düzeninde.
 
 ## Mimari
 
@@ -151,35 +151,42 @@ Böylece form revize edilirse eski kayıtlar kendi kurallarıyla hesaplanır.
 Ay seçilir, eklenti o ayın `_veri/` klasörünü okur ve raporu yeniden üretir.
 Kaynak her zaman dosyalar; eklentinin kendi belleği değil.
 
-KKY.FR.06 Analiz Rapor Formu düzeninde, yazdırmaya hazır:
+Çıktı, kendi içinde yeterli tek bir HTML: dışarıdan yazı tipi, betik ya da
+görsel çekmez. Yeni sekmede açılır, tarayıcıdan Yazdır → PDF ile A4'e basılır.
 
 - Aranan, ulaşılan, tamamlanan anket sayıları ve ulaşılma oranı
-- Her soru için ortalama puan ve 1–5 dağılımı
+- Her soru için ortalama puan ve 1–5 dağılımı (satır içi çubuk)
 - Memnuniyet oranı: hem ortalama/5 hem 4–5 verenlerin oranı
 - Kırılımlar: poliklinik, hekim, katılımcı türü, cinsiyet, yaş, eğitim
 - DÖF için 2 ve altı puanların listesi
 - Hastaların serbest görüşleri
-- Önceki ayla karşılaştırma
+- Tekrar aranacaklar listesi
+- Önceki ayla karşılaştırma (kartlarda ve soru tablosunda ▲▼ olarak)
 
 **Kapsam dışı cevaplar** (4/3 "Bilgi istemedim", 6/3 "Farkında değildim" ve
-tetkik yapılmayan 7. soru) ortalamaya girmez; her sorunun altında kaç kişinin
-kapsam dışı kaldığı ayrıca yazılır. Bir sorunun ortalaması, yalnızca o soruyu
-puanlayanların üzerinden hesaplanır ve payda raporda görünür.
-
-Tekrar aranacaklar listesi de aynı veriden çıkar: ulaşılamayan kayıtlar.
+tetkik yapılmayan 7. soru) ortalamaya girmez; her sorunun yanında kaç cevabın
+kapsam dışı kaldığı ayrıca yazılır. Bir sorunun ortalaması yalnızca o soruyu
+puanlayanların üzerinden hesaplanır ve payda "Puanlanan" sütununda görünür.
+Kapsam dışı cevaplar 1–5 dağılım çubuğunda ise PDF'te işaretlendiği gibi
+görünmeye devam eder.
 
 ## Yapım sırası
 
-| Faz | İçerik | Biter bitmez elde ne olur |
+| Faz | İçerik | Durum |
 |---|---|---|
-| 1 | Manifest, yan panel, HBYS okuma | Panel HBYS'nin yanında açılıyor, seçilen hastanın bilgileri görünüyor |
-| 2 | Görüşme sonucu, form, 1–5 klavye, taslak, mükerrer uyarısı | Anket doldurulabiliyor, cevaplar kaybolmuyor |
-| 3 | PDF işaretleme, önizleme, onay ve damga | Doldurulmuş PDF üretiliyor |
-| 4 | Klasör izni, ay klasörleri, yazma kuyruğu | Anketler ağ klasörüne düşüyor |
-| 5 | Ay sonu raporu | Rapor tek tıkla çıkıyor |
+| 1 | Manifest, yan panel, HBYS okuma | Yazıldı |
+| 2 | Görüşme sonucu, form, 1–5 klavye, taslak, mükerrer uyarısı | Yazıldı |
+| 3 | PDF işaretleme, önizleme, onay ve damga | Yazıldı, çıktısı doğrulandı |
+| 4 | Klasör izni, ay klasörleri, yazma kuyruğu | Yazıldı, hastanede denenmedi |
+| 5 | Ay sonu raporu | Yazıldı, çıktısı doğrulandı |
 
-Faz 3'ün geometrisi çalışan bir prototiple doğrulandı
-(`arastirma/isaretleme-prototipi.py`), bu yüzden riski düşük.
+Kod `eklenti/` altında. Sınamalar için `npm test`:
+
+- `test/pdf-dene.mjs` — işaretleme motorunu Node'da çalıştırıp PDF üretir
+- `test/rapor-dene.mjs` — kapsam dışı kuralını, DÖF ve tekrar arama
+  listelerini doğrular, örnek rapor üretir
+- `test/panel-dene.mjs` — eklentiyi gerçek Chromium'a yükler, paneli açar,
+  klavye akışını ve "hasta yakını" kuralını sınar
 
 ## Başlamadan doğrulanacaklar
 

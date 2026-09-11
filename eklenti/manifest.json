@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "HHD.FR.19 Hasta Memnuniyet Anketi",
+  "version": "0.1.0",
+  "description": "HBYS ekranının yanındaki yan panelden hasta memnuniyet anketi doldurur, orijinal PDF şablonunun üzerine işaretler.",
+  "default_locale": "tr",
+  "minimum_chrome_version": "114",
+
+  "permissions": ["sidePanel", "storage", "alarms", "scripting"],
+  "host_permissions": ["http://10.212.200.215:8090/*"],
+
+  "background": { "service_worker": "arkaplan.js", "type": "module" },
+
+  "side_panel": { "default_path": "panel/panel.html" },
+
+  "action": { "default_title": "Anket panelini aç" },
+
+  "content_scripts": [
+    {
+      "matches": ["http://10.212.200.215:8090/Poliklinik/*"],
+      "js": ["okuyucu.js"],
+      "world": "MAIN",
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://10.212.200.215:8090/Poliklinik/*"],
+      "js": ["kopru.js"],
+      "world": "ISOLATED",
+      "run_at": "document_idle"
+    }
+  ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

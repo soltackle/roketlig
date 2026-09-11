@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Hasta Memnuniyet Anketi</title>
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+
+<header id="ustCubuk">
+  <div class="rozetler">
+    <span id="rozetKlasor" class="rozet" title="Kayıt klasörü durumu">Klasör yok</span>
+    <span id="rozetKuyruk" class="rozet gizli" title="Yazılmayı bekleyen anket">0 bekliyor</span>
+    <span id="rozetHbys" class="rozet" title="HBYS bağlantısı">HBYS bekleniyor</span>
+  </div>
+  <nav class="sekmeler">
+    <button class="sekme secili" data-sekme="anket">Anket</button>
+    <button class="sekme" data-sekme="rapor">Rapor</button>
+    <button class="sekme" data-sekme="ayarlar">Ayarlar</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ══════════════════════ ANKET ══════════════════════ -->
+<section id="sekmeAnket" class="sekme-icerik">
+
+  <div id="uyariAlani"></div>
+
+  <!-- Hasta -->
+  <fieldset>
+    <legend>Hasta</legend>
+    <div id="hastaKart" class="hasta-kart bos">
+      <p class="ipucu">HBYS'de bir hasta seçin ya da aşağıdan rastgele hasta önertin.</p>
+    </div>
+    <div class="satir">
+      <button id="btnRastgele" class="ikincil" type="button">İşlemi bitenlerden rastgele öner</button>
+      <button id="btnYenile" class="ikincil dar" type="button" title="Seçili hastayı yeniden oku">↻</button>
+    </div>
+    <div class="alanlar">
+      <label>Ad soyad <input id="alanAd" type="text" autocomplete="off"></label>
+      <label>Telefon <input id="alanTelefon" type="text" autocomplete="off"></label>
+      <label>Poliklinik <input id="alanPoliklinik" type="text" autocomplete="off">
+        <span id="notPoliklinik" class="not gizli">HBYS önerisi — doğrulayın</span>
+      </label>
+      <label>Hekim <input id="alanHekim" type="text" autocomplete="off"></label>
+    </div>
+  </fieldset>
+
+  <!-- Görüşme sonucu -->
+  <fieldset>
+    <legend>Görüşme sonucu</legend>
+    <div id="sonucSecim" class="secim-grup"></div>
+  </fieldset>
+
+  <!-- Anket gövdesi -->
+  <div id="anketGovde">
+
+    <fieldset>
+      <legend>Ankete katılan</legend>
+      <div id="katilanSecim" class="secim-grup"></div>
+      <p id="yakinUyari" class="not uyari gizli">
+        Telefonu hasta yakını açtı: cinsiyet ve yaş grubu görüşülen kişiye sorulmalı,
+        hasta kaydından doldurulmaz.
+      </p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Cinsiyet</legend>
+      <div id="cinsiyetSecim" class="secim-grup"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Yaş grubu</legend>
+      <div id="yasSecim" class="secim-grup"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Eğitim durumu</legend>
+      <div id="egitimSecim" class="secim-grup"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Sorular <span class="not">1–5 tuşlarıyla cevaplayın</span></legend>
+      <div id="sorular"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Hastanın görüşü <span class="not">PDF'e yazılmaz</span></legend>
+      <textarea id="alanGorus" rows="3" placeholder="Hastanın kendi cümleleri…"></textarea>
+    </fieldset>
+
+  </div>
+
+  <div class="eylemler">
+    <button id="btnOnizle" class="ikincil" type="button">Önizle</button>
+    <button id="btnOnayla" class="birincil" type="button">Onayla ve kaydet</button>
+    <button id="btnTemizle" class="sessiz" type="button">Taslağı sil</button>
+  </div>
+
+  <p id="taslakNot" class="not"></p>
+</section>
+
+<!-- ══════════════════════ RAPOR ══════════════════════ -->
+<section id="sekmeRapor" class="sekme-icerik gizli">
+  <fieldset>
+    <legend>Ay sonu raporu</legend>
+    <label>Ay <select id="aySecim"></select></label>
+    <div class="satir">
+      <button id="btnRapor" class="birincil" type="button">Raporu üret</button>
+      <button id="btnAylariYenile" class="ikincil dar" type="button" title="Ay listesini yenile">↻</button>
+    </div>
+    <p class="not">
+      Rapor, seçilen ayın <code>_veri</code> klasöründeki dosyalardan yeniden üretilir.
+      Önceki ay varsa karşılaştırma da eklenir.
+    </p>
+    <div id="raporDurum"></div>
+  </fieldset>
+</section>
+
+<!-- ══════════════════════ AYARLAR ══════════════════════ -->
+<section id="sekmeAyarlar" class="sekme-icerik gizli">
+  <fieldset>
+    <legend>Kayıt klasörü</legend>
+    <p id="klasorDurum" class="not"></p>
+    <div class="satir">
+      <button id="btnKlasorSec" class="birincil" type="button">Ana klasörü seç</button>
+      <button id="btnIzinIste" class="ikincil gizli" type="button">İzni onayla</button>
+    </div>
+    <p class="not">
+      Eklenti seçtiğiniz klasörün altında
+      <code>HHD.FR.19 Anketleri / YYYY-AA Ay / _veri</code> yapısını kendisi kurar.
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Anketi uygulayan</legend>
+    <label>Ad soyad <input id="alanUygulayan" type="text" autocomplete="off"
+                           placeholder="PDF'in altındaki damgaya yazılır"></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Bekleyen kayıtlar</legend>
+    <p id="kuyrukDurum" class="not">Bekleyen kayıt yok.</p>
+    <button id="btnKuyruk" class="ikincil" type="button">Şimdi yazmayı dene</button>
+  </fieldset>
+</section>
+
+</main>
+
+<!-- Önizleme -->
+<div id="onizleme" class="ortu gizli">
+  <div class="ortu-ic">
+    <div class="ortu-ust">
+      <strong>Önizleme</strong>
+      <button id="btnOnizlemeKapat" class="sessiz" type="button">Kapat</button>
+    </div>
+    <iframe id="onizlemeCerceve" title="Doldurulmuş anket önizlemesi"></iframe>
+  </div>
+</div>
+
+<script type="module" src="panel.js"></script>
+</body>
+</html>
