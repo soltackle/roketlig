@@ -529,6 +529,11 @@ async function aylariYukle() {
     o.textContent = "Kayıtlı ay yok";
     o.value = "";
     secim.replaceChildren(o);
+    // Boş liste iki ayrı şeyi gizleyebilir; hangisi olduğunu söyle.
+    $("raporDurum").textContent = (await kayitDeposu.izinDurumu()) === "verildi"
+      ? "Seçili klasörde ay klasörü bulunamadı. Henüz onaylanmış anket yoksa " +
+        "normaldir; varsa Ayarlar'dan klasörü doğrulayın."
+      : "Kayıt klasörü seçilmedi ya da izni tazelenmedi — Ayarlar sekmesine bakın.";
   } else if (aylar.includes(oncekiSecim)) {
     secim.value = oncekiSecim;
   }
@@ -541,7 +546,7 @@ async function raporCikar() {
   const durum = $("raporDurum");
   durum.textContent = "Veri dosyaları okunuyor…";
   try {
-    const { kayitlar, bozuk } = await kayitDeposu.ayKayitlariniOku(ay);
+    const { kayitlar, bozuk, eksik } = await kayitDeposu.ayKayitlariniOku(ay);
     let onceki = null;
     const oncekiAd = oncekiAyKlasoru(ay);
     if (oncekiAd) {
@@ -554,6 +559,7 @@ async function raporCikar() {
 
     durum.textContent = `${kayitlar.length} kayıttan rapor üretildi` +
       (bozuk.length ? ` · ${bozuk.length} dosya okunamadı: ${bozuk.join(", ")}` : "") +
+      (eksik?.length ? ` · ${eksik.length} eski kayıt açılamadı (Türkçe adlı dosyalar)` : "") +
       (onceki ? ` · ${donemEtiketi(oncekiAd)} ile karşılaştırıldı` : " · karşılaştırma yok");
   } catch (e) {
     durum.textContent = `Rapor üretilemedi: ${e.message ?? e}`;

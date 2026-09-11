@@ -49,11 +49,16 @@ Dosyalar şu yapıya yazılır:
 
 ```
 HHD.FR.19 Anketleri/
-  2026-09 Eylül/
+  2026-09 Eylul/
     AHMET YILMAZ - 11.09.2026 14.32.pdf
     _veri/
       AHMET YILMAZ - 11.09.2026 14.32.json
 ```
+
+Klasör ve dosya adları ASCII'dir (`Eylul`, `SUKRU DOGAN`): adında Türkçe
+karakter olan klasörler tarayıcının dizin listelemesinde görünmüyor, öyle
+yazılan anket sonradan bulunamıyor. Panelde ve raporda görünen her şey tam
+Türkçe kalır.
 
 Her anketin bir PDF'i ve yanında küçük bir veri dosyası var; ortak bir Excel
 dosyasına satır eklenmiyor. Ay sonu raporu istenildiği an bu veri

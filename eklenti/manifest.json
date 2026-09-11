@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "HHD.FR.19 Hasta Memnuniyet Anketi",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "HBYS ekranının yanındaki yan panelden hasta memnuniyet anketi doldurur, orijinal PDF şablonunun üzerine işaretler.",
   "default_locale": "tr",
   "minimum_chrome_version": "114",

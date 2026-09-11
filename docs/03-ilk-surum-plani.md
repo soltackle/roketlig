@@ -92,7 +92,7 @@ düğmelik bir onay gösterir.
 
 ```
 HHD.FR.19 Anketleri/
-  2026-09 Eylül/
+  2026-09 Eylul/
     AHMET YILMAZ - 11.09.2026 14.32.pdf
     _veri/
       AHMET YILMAZ - 11.09.2026 14.32.json
@@ -101,6 +101,14 @@ HHD.FR.19 Anketleri/
 Ay klasörlerini eklenti kendisi açar. Windows dosya adında kabul etmediği
 karakterler (`\ / : * ? " < > |`) temizlenir; saat `14.32` biçiminde yazılır.
 Aynı gün aranan iki "Mehmet Yılmaz" birbirinin üzerine yazmaz.
+
+**Diskteki adlar ASCII.** `Eylül` yerine `Eylul`, `ŞÜKRÜ DOĞAN` yerine
+`SUKRU DOGAN`. Sebebi kozmetik değil: adında Türkçe karakter olan klasör ve
+dosyalar oluşuyor ama tarayıcının dizin listelemesinde hiç görünmüyor — öyle
+bir adla yazılan anket diske düşer, sonra bulunamaz ve rapor üretilemez.
+Ayrıca olmayan bir Türkçe adlı klasör "varmış gibi" açılabildiği için ada göre
+arama da yalnızca ASCII adlarla yapılır. Panelde ve raporda görünen her şey
+(`Eylül 2026`, hastanın tam adı) yine tam Türkçe; değişen sadece dosya adı.
 
 Ortak bir Excel dosyasına satır eklenmiyor: her anket kendi PDF'i ve kendi
 veri dosyası. Dosya bozulması ve iki bilgisayarın aynı anda yazması riski

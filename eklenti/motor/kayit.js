@@ -11,8 +11,27 @@ const D_AYAR = "ayar";       // klasör tanıtıcısı gibi tekil kayıtlar
 const D_KUYRUK = "kuyruk";   // yazılamamış anketler
 const D_DIZIN = "dizin";     // mükerrer denetimi için hafif dizin
 
-const AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-               "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+/* Klasör ve dosya adları ASCII.
+ *
+ * Sebebi kozmetik değil: adında Türkçe karakter olan klasör ve dosyalar
+ * oluşuyor ama tarayıcının dizin listelemesinde (entries()) hiç görünmüyor.
+ * Böyle bir adla yazılan anket diske düşer, sonra bulunamaz — ay listesi boş
+ * çıkar ve rapor üretilemez. Görünen adlar (panel, rapor) yine tam Türkçe;
+ * yalnızca diskteki adlar sadeleştirilir. */
+const AYLAR = ["Ocak", "Subat", "Mart", "Nisan", "Mayis", "Haziran",
+               "Temmuz", "Agustos", "Eylul", "Ekim", "Kasim", "Aralik"];
+
+
+const CEVRIM = { ş: "s", Ş: "S", ğ: "g", Ğ: "G", ı: "i", İ: "I",
+                 ö: "o", Ö: "O", ü: "u", Ü: "U", ç: "c", Ç: "C" };
+
+/** Türkçe harfleri ASCII karşılığına çevirir, kalan ASCII dışı işaretleri atar. */
+export function asciiye(metin) {
+  return String(metin ?? "")
+    .replace(/[şŞğĞıİöÖüÜçÇ]/g, (h) => CEVRIM[h])
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")   // kalan aksanları ayıkla
+    .replace(/[^\x20-\x7e]/g, "");
+}
 
 export const ANA_KLASOR = "HHD.FR.19 Anketleri";
 export const VERI_KLASORU = "_veri";
@@ -93,9 +112,9 @@ export async function klasoruUnut() {
 const YASAK = new RegExp('[\\\\/:*?"<>|' + "\\u0000-\\u001f]", "g");
 const AYRILMIS = /^(CON|PRN|AUX|NUL|COM\d|LPT\d)$/i;
 
-/** Yasak karakterleri temizler; Türkçe harfler olduğu gibi kalır. */
+/** Yasak karakterleri temizler ve adı ASCII'ye indirir (bkz. AYLAR notu). */
 export function dosyaAdiTemizle(ham, yedek = "isimsiz") {
-  let s = String(ham ?? "").replace(YASAK, " ").replace(/\s+/g, " ").trim();
+  let s = asciiye(ham).replace(YASAK, " ").replace(/\s+/g, " ").trim();
   s = s.replace(/[. ]+$/, "");                 // Windows sonda nokta/boşluk sevmez
   if (AYRILMIS.test(s)) s = `_${s}`;
   if (s.length > 80) s = s.slice(0, 80).trim();
@@ -108,6 +127,13 @@ export function ayKlasoruAdi(tarih) {
   const d = tarih instanceof Date ? tarih : new Date(tarih);
   return `${d.getFullYear()}-${iki(d.getMonth() + 1)} ${AYLAR[d.getMonth()]}`;
 }
+
+/** Ada göre arama YALNIZCA ASCII adlarla yapılır — gerekçesi AYLAR notunda. */
+function ayKlasorAdi(yil, ay) {
+  return `${yil}-${iki(ay)} ${AYLAR[ay - 1]}`;
+}
+
+const asciiMi = (s) => /^[\x20-\x7e]*$/.test(String(s));
 
 /** "AHMET YILMAZ - 11.09.2026 14.32" — saatte ":" yerine "." çünkü Windows. */
 export function anketDosyaAdi(adSoyad, tarih) {
@@ -208,7 +234,8 @@ async function dizineEkle(kayit) {
     ay,
     adSoyad: kayit.hasta.adSoyad,
     tarih: kayit.tarih,
-    gorusmeSonucu: kayit.gorusmeSonucu
+    gorusmeSonucu: kayit.gorusmeSonucu,
+    dosyaTabani: kayit.dosyaTabani     // listelemede görünmeyen dosyaları açmak için
   });
 }
 
@@ -240,7 +267,9 @@ export async function ayKayitlariniOku(ayEtiketi) {
 
   const kayitlar = [];
   const bozuk = [];
+  const gorulen = new Set();
   for await (const [ad, tanit] of veri.entries()) {
+    gorulen.add(ad);
     if (!ad.toLowerCase().endsWith(".json") || tanit.kind !== "file") continue;
     try {
       kayitlar.push(JSON.parse(await (await tanit.getFile()).text()));
@@ -248,21 +277,67 @@ export async function ayKayitlariniOku(ayEtiketi) {
       bozuk.push(ad);
     }
   }
-  return { kayitlar, bozuk };
+
+  // Eski sürümler veri dosyalarını Türkçe adla yazıyordu; o adlar listelemede
+  // görünmüyor. Yereldeki dizinden hangi anketlerin beklendiğini bilip
+  // dosyalarını tek tek açmayı deneriz.
+  const ay7 = ayEtiketi.slice(0, 7);
+  const eksik = [];
+  for (const kalem of await ayinDizini(ay7)) {
+    if (!kalem.dosyaTabani || gorulen.has(`${kalem.dosyaTabani}.json`)) continue;
+    if (!asciiMi(kalem.dosyaTabani)) { eksik.push(kalem.dosyaTabani); continue; }
+    try {
+      const t = await veri.getFileHandle(`${kalem.dosyaTabani}.json`, { create: false });
+      kayitlar.push(JSON.parse(await (await t.getFile()).text()));
+    } catch {
+      eksik.push(kalem.dosyaTabani);
+    }
+  }
+
+  return { kayitlar, bozuk, eksik };
 }
 
-/** Ana klasördeki ay klasörlerini listeler. */
+/**
+ * Ana klasördeki ay klasörlerini listeler.
+ *
+ * Önce klasörü gezer. Gezme hiçbir şey vermezse son GERIYE_BAK ayın adını tek
+ * tek dener — klasör var ama listelenemiyorsa yine de bulunur. Deneme yalnızca
+ * ASCII adlarla yapılır: Türkçe adlı olmayan bir klasör "varmış gibi" açılıyor,
+ * öyle bir denemenin sonucu hayalet ay listesi olurdu.
+ */
+const GERIYE_BAK = 24;
+
 export async function aylariListele() {
   const tanitici = await anaKlasor();
   if (!tanitici) return [];
+
+  let ana;
   try {
-    const ana = await tanitici.getDirectoryHandle(ANA_KLASOR, { create: false });
-    const aylar = [];
-    for await (const [ad, tanit] of ana.entries()) {
-      if (tanit.kind === "directory" && /^\d{4}-\d{2} /.test(ad)) aylar.push(ad);
-    }
-    return aylar.sort().reverse();
+    ana = await tanitici.getDirectoryHandle(ANA_KLASOR, { create: false });
   } catch {
-    return [];
+    return [];                                  // ana klasör henüz oluşmamış
   }
+
+  const bulunan = new Set();
+  try {
+    for await (const [ad, tanit] of ana.entries()) {
+      if (tanit.kind === "directory" && /^\d{4}-\d{2} /.test(ad)) bulunan.add(ad);
+    }
+  } catch { /* gezilemedi; aşağıdaki deneme iş görür */ }
+
+  if (!bulunan.size) {
+    const simdi = new Date();
+    for (let n = 0; n < GERIYE_BAK; n += 1) {
+      const d = new Date(simdi.getFullYear(), simdi.getMonth() - n, 1);
+      const aday = ayKlasorAdi(d.getFullYear(), d.getMonth() + 1);
+      try {
+        await ana.getDirectoryHandle(aday, { create: false });
+        bulunan.add(aday);
+      } catch { /* o ay yok */ }
+    }
+  }
+
+  // "2026-09 ..." önekine göre yeniden eskiye
+  return [...bulunan].sort((a, b) => b.slice(0, 7).localeCompare(a.slice(0, 7)) ||
+                                     a.localeCompare(b));
 }
