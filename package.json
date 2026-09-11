@@ -5,11 +5,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run test:istatistik && npm run test:pdf && npm run test:panel && npm run test:kayit",
+    "test": "npm run test:istatistik && npm run test:pdf && npm run test:panel && npm run test:kayit && npm run test:liste",
     "test:istatistik": "node test/rapor-dene.mjs /tmp/rapor-ornek.html",
     "test:pdf": "node test/pdf-dene.mjs /tmp/anket-ornek.pdf",
     "test:panel": "node test/panel-dene.mjs /tmp/panel.png",
-    "test:kayit": "node test/kayit-dene.mjs"
+    "test:kayit": "node test/kayit-dene.mjs",
+    "test:liste": "node test/liste-dene.mjs /tmp/liste-ornek.html"
   },
   "devDependencies": {
     "playwright": "^1.56.0"

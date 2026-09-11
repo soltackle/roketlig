@@ -10,6 +10,7 @@ import {
 import { anketiIsaretle } from "../motor/pdf.js";
 import * as kayitDeposu from "../motor/kayit.js";
 import { raporUret, oncekiAyKlasoru, donemEtiketi } from "../motor/rapor.js";
+import { listeHtml, listeCsv } from "../motor/liste.js";
 
 const $ = (id) => document.getElementById(id);
 const iki = (n) => String(n).padStart(2, "0");
@@ -18,8 +19,8 @@ const iki = (n) => String(n).padStart(2, "0");
 
 const bosTaslak = () => ({
   gorusmeSonucu: null,
-  hasta: { hastaId: null, adSoyad: "", telefon: "", poliklinik: "", hekim: "",
-           islemTarihi: null, poliklinikOneri: false },
+  hasta: { hastaId: null, adSoyad: "", tcKimlikNo: "", telefon: "", poliklinik: "",
+           hekim: "", islemTarihi: null, poliklinikOneri: false },
   katilimci: { tur: null, cinsiyet: null, yasGrubu: null, egitim: null },
   cevaplar: {},
   tetkikYok: false,
@@ -254,6 +255,7 @@ async function hastayiAl(hasta, kaynak = "hbys") {
   taslak.hasta = {
     hastaId: hasta.hastaId,
     adSoyad: hasta.adSoyad ?? "",
+    tcKimlikNo: hasta.tcKimlikNo ? String(hasta.tcKimlikNo).trim() : "",
     telefon: hasta.telefon ?? "",
     poliklinik: hasta.poliklinik ?? "",
     hekim: hasta.hekim ?? "",
@@ -261,6 +263,7 @@ async function hastayiAl(hasta, kaynak = "hbys") {
     poliklinikOneri: Boolean(hasta.poliklinik)
   };
   $("alanAd").value = taslak.hasta.adSoyad;
+  $("alanTc").value = taslak.hasta.tcKimlikNo;
   $("alanTelefon").value = taslak.hasta.telefon;
   $("alanPoliklinik").value = taslak.hasta.poliklinik;
   $("alanHekim").value = taslak.hasta.hekim;
@@ -335,6 +338,12 @@ async function taslagiYukle(hastaId) {
     katilimci: { ...bosTaslak().katilimci, ...kayitli.katilimci },
     cevaplar: { ...kayitli.cevaplar }
   };
+  // Taslakta elle düzeltilmiş alanlar HBYS'den geleni ezmeli, tersi değil.
+  $("alanAd").value = taslak.hasta.adSoyad ?? "";
+  $("alanTc").value = taslak.hasta.tcKimlikNo ?? "";
+  $("alanTelefon").value = taslak.hasta.telefon ?? "";
+  $("alanPoliklinik").value = taslak.hasta.poliklinik ?? "";
+  $("alanHekim").value = taslak.hasta.hekim ?? "";
   $("alanGorus").value = taslak.hastaGorusu ?? "";
   $("taslakNot").textContent = "Kayıtlı taslak yüklendi.";
 }
@@ -375,6 +384,7 @@ function kayitKur() {
     hasta: {
       hastaId: taslak.hasta.hastaId,
       adSoyad: $("alanAd").value.trim(),
+      tcKimlikNo: $("alanTc").value.replace(/\D/g, ""),
       telefon: $("alanTelefon").value.trim(),
       poliklinik: $("alanPoliklinik").value.trim(),
       hekim: $("alanHekim").value.trim(),
@@ -566,6 +576,57 @@ async function raporCikar() {
   }
 }
 
+// ── Anket listesi ──────────────────────────────────────────
+
+/** Seçili ayın kayıtlarını okur; başaramazsa sebebini panele yazar. */
+async function ayinKayitlari(durumEl) {
+  const ay = $("aySecim").value;
+  if (!ay) return null;
+  durumEl.textContent = "Veri dosyaları okunuyor…";
+  try {
+    const { kayitlar, bozuk, eksik } = await kayitDeposu.ayKayitlariniOku(ay);
+    return { ay, kayitlar, bozuk, eksik };
+  } catch (e) {
+    durumEl.textContent = `Okunamadı: ${e.message ?? e}`;
+    return null;
+  }
+}
+
+const listeNotu = (sonuc, ek = "") =>
+  `${sonuc.kayitlar.length} kayıt${ek}` +
+  (sonuc.bozuk.length ? ` · ${sonuc.bozuk.length} dosya okunamadı` : "") +
+  (sonuc.eksik?.length ? ` · ${sonuc.eksik.length} eski kayıt açılamadı` : "");
+
+async function listeyiAc() {
+  const durum = $("listeDurum");
+  const sonuc = await ayinKayitlari(durum);
+  if (!sonuc) return;
+
+  const sadece = $("cbSadeceUlasilan").checked;
+  const html = listeHtml(donemEtiketi(sonuc.ay), sonuc.kayitlar, sadece);
+  const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+  await chrome.tabs.create({ url });
+  durum.textContent = listeNotu(sonuc, " listelendi");
+}
+
+async function listeyiIndir() {
+  const durum = $("listeDurum");
+  const sonuc = await ayinKayitlari(durum);
+  if (!sonuc) return;
+
+  const sadece = $("cbSadeceUlasilan").checked;
+  const csv = listeCsv(sonuc.kayitlar, sadece);
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const bag = document.createElement("a");
+  bag.href = url;
+  bag.download = `${kayitDeposu.dosyaAdiTemizle(sonuc.ay)} anket listesi.csv`;
+  document.body.append(bag);
+  bag.click();
+  bag.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  durum.textContent = listeNotu(sonuc, " CSV olarak indirildi");
+}
+
 // ── Klavye ─────────────────────────────────────────────────
 
 document.addEventListener("keydown", (e) => {
@@ -612,7 +673,8 @@ function baglaniklariKur() {
   });
   $("btnYenile").addEventListener("click", () => hbysYolla("seciliHasta"));
 
-  for (const [id, anahtar] of [["alanAd", "adSoyad"], ["alanTelefon", "telefon"],
+  for (const [id, anahtar] of [["alanAd", "adSoyad"], ["alanTc", "tcKimlikNo"],
+                               ["alanTelefon", "telefon"],
                                ["alanPoliklinik", "poliklinik"], ["alanHekim", "hekim"]]) {
     $(id).addEventListener("input", () => {
       taslak.hasta[anahtar] = $(id).value;
@@ -643,6 +705,8 @@ function baglaniklariKur() {
 
   $("btnRapor").addEventListener("click", raporCikar);
   $("btnAylariYenile").addEventListener("click", aylariYukle);
+  $("btnListe").addEventListener("click", listeyiAc);
+  $("btnListeCsv").addEventListener("click", listeyiIndir);
 
   $("alanUygulayan").addEventListener("input", () => {
     uygulayan = $("alanUygulayan").value.trim();

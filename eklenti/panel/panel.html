@@ -48,6 +48,8 @@
     </div>
     <div class="alanlar">
       <label>Ad soyad <input id="alanAd" type="text" autocomplete="off"></label>
+      <label>T.C. kimlik no <input id="alanTc" type="text" inputmode="numeric"
+                                   maxlength="11" autocomplete="off"></label>
       <label>Telefon <input id="alanTelefon" type="text" autocomplete="off"></label>
       <label>Poliklinik <input id="alanPoliklinik" type="text" autocomplete="off">
         <span id="notPoliklinik" class="not gizli">HBYS önerisi — doğrulayın</span>
@@ -125,6 +127,22 @@
       Önceki ay varsa karşılaştırma da eklenir.
     </p>
     <div id="raporDurum"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Anket listesi</legend>
+    <p class="not">
+      Yapılan anketlerin dökümü: ad soyad, T.C. kimlik no, telefon, poliklinik,
+      hekim, muayene tarihi, aranma tarihi ve saati.
+    </p>
+    <div class="satir">
+      <button id="btnListe" class="birincil" type="button">Listeyi aç</button>
+      <button id="btnListeCsv" class="ikincil" type="button">CSV indir</button>
+    </div>
+    <label class="satir-ici">
+      <input id="cbSadeceUlasilan" type="checkbox"> Yalnızca ulaşılanlar
+    </label>
+    <div id="listeDurum"></div>
   </fieldset>
 </section>
 

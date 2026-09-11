@@ -131,6 +131,7 @@ sayısı görünür.
   "hasta": {
     "hastaId": 482913,
     "adSoyad": "AHMET YILMAZ",
+    "tcKimlikNo": "12345678901",
     "telefon": "0532 415 66 08",
     "poliklinik": "Ağız, Diş ve Çene Cerrahisi",
     "hekim": "Dt. Şenay IŞIK",
@@ -150,7 +151,8 @@ sayısı görünür.
 }
 ```
 
-T.C. kimlik numarası kayda girmiyor. Mükerrer denetimi `hastaId` ile yapılıyor.
+T.C. kimlik numarası kayda giriyor (anket listesi için) ama PDF'e yazılmıyor —
+formda böyle bir alan yok. Mükerrer denetimi yine `hastaId` ile yapılıyor.
 
 Kapsam dışı sayılacak cevaplar (4/3, 6/3) kayıtta ham hâliyle duruyor;
 "ortalamaya girmez" kuralı `formSurum` alanına bağlı tek bir yerde tanımlı.

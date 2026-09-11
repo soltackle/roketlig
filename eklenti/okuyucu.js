@@ -84,6 +84,9 @@
       hastaId: al(kayit, "HASTA_ID"),
       muracaatId: al(kayit, "MURACAAT_ID"),
       adSoyad: al(kayit, "HASTA_ADI"),
+      // Anket listesi resmî kayıt olduğu için T.C. kimlik numarası da alınıyor.
+      // Ekrandaki başlık yıldızlı gösteriyor; açık hâli ızgara kaydında.
+      tcKimlikNo: al(kayit, "TC_KIMLIK_NO"),
       telefon: telefon ? String(telefon).trim() : null,
       cepVarMi: al(kayit, "CEP_TELEFONU") !== null,
       cinsiyet: cinsiyet(al(kayit, "CINSIYETI")),
@@ -95,7 +98,6 @@
       muayeneBitis: al(kayit, "MUAYENE_BITIS_ZAMANI"),
       islemDurumu: al(kayit, "HASTA_ISLEM_DURUM_BASLIK")
     };
-    // T.C. kimlik numarası bilinçli olarak okunmuyor.
   }
 
   // --- Liste sorguları -----------------------------------------------------

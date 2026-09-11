@@ -5,7 +5,8 @@ formunu, HBYS ekranının yanındaki Chrome yan panelinden doldurup orijinal PDF
 şablonunun üzerine işaretleyen tarayıcı eklentisi.
 
 Eklenti internete hiçbir istek atmaz; kullandığı kütüphaneler, yazı tipi ve
-boş form paketin içinde gömülüdür. T.C. kimlik numarası hiçbir yere yazılmaz.
+boş form paketin içinde gömülüdür. Kişisel veri hastane içindeki klasörden
+dışarı çıkmaz.
 
 ## Kurulum
 
@@ -66,6 +67,11 @@ dosyalarından yeniden üretilebiliyor.
 
 Ağ klasörüne o an ulaşılamazsa anket eklentide bekler ve bağlantı gelince
 yazılır; panelde bekleyen kayıt sayısı görünür.
+
+**Anket listesi.** Rapor sekmesinden, yapılan anketlerin dökümü alınır: ad
+soyad, T.C. kimlik no, telefon, başvurduğu poliklinik, hekim, muayene tarihi,
+aranma tarihi ve saati, görüşme sonucu, anketi uygulayan. Ekranda açılıp
+yazdırılabilir ya da CSV olarak Excel'e alınabilir.
 
 ## Depo düzeni
 

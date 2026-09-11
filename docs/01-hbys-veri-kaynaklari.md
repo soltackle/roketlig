@@ -55,7 +55,7 @@ Hepsi `App.GridHastaListesi.getStore()` kayıtlarında mevcut:
 | `HASTA_ID` | Aynı ay tekrar arama denetimi |
 | `MURACAAT_ID` | Başvuru bazlı tekillik |
 | `TARIHI`, `MUAYENE_BITIS_ZAMANI` | Hangi güne ait olduğu |
-| `TC_KIMLIK_NO` | **Kullanılmayacak** (aşağıya bkz.) |
+| `TC_KIMLIK_NO` | Anket listesi (resmî döküm) |
 
 ### Poliklinik adı burada yok
 
@@ -94,9 +94,13 @@ yüklü store okunacak.
 
 ## Kişisel veri
 
-- T.C. kimlik numarası hiçbir yere yazılmayacak. Aynı ay tekrar arama denetimi
-  için `HASTA_ID` yeterli.
-- Ad-soyad ve telefon yalnızca PDF'in kendisinde ve yanındaki veri dosyasında
-  tutulacak; ikisi de hastane içindeki klasörde kalacak.
-- Eklenti dışarıya hiçbir istek atmayacak, tüm kütüphaneler paket içine gömülü
-  olacak.
+- Ad-soyad, T.C. kimlik numarası ve telefon veri kaydında tutulur; hepsi
+  hastane içindeki klasörde kalır.
+- T.C. kimlik numarası **PDF'e yazılmaz** — formda böyle bir alan yok. Yalnızca
+  veri kaydında ve ondan üretilen anket listesinde görünür.
+- Aynı ay tekrar arama denetimi T.C. ile değil `HASTA_ID` ile yapılır.
+- Eklenti dışarıya hiçbir istek atmaz, tüm kütüphaneler paket içine gömülüdür.
+
+> T.C. kimlik numarası ilk sürümde hiç okunmuyordu. Anket listesinin resmî
+> döküm niteliği taşıması istendiği için 0.3.0'da eklendi; daha eski
+> kayıtlarda bu alan boş görünür.

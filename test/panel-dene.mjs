@@ -45,6 +45,12 @@ try {
   assert.equal(soruSayisi, 8, "8 soru çizilmeli");
   console.log("✓ 8 soru çizildi");
 
+  // Anket listesi için gereken hasta alanları
+  const alanlar = await sayfa.locator(".alanlar label").allTextContents();
+  assert.ok(alanlar.some((a) => a.includes("T.C. kimlik no")),
+    "T.C. kimlik no alanı olmalı");
+  console.log("✓ T.C. kimlik no alanı yerinde");
+
   const sonuclar = await sayfa.locator("#sonucSecim .secim").allTextContents();
   assert.deepEqual(sonuclar, ["Ulaşıldı", "Açmadı", "Numara hatalı", "Görüşmeyi istemedi"]);
   console.log("✓ görüşme sonucu seçenekleri yerinde");
