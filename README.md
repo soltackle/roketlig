@@ -9,17 +9,30 @@ boş form paketin içinde gömülüdür. T.C. kimlik numarası hiçbir yere yaz�
 
 ## Kurulum
 
-1. Chrome sürümünü doğrulayın: adres çubuğuna `chrome://version`.
-   Yan panel **114 ve üstü** gerektirir.
-2. `chrome://extensions` → **Geliştirici modu** açık → **Paketlenmemiş yükle**
-   → bu depodaki `eklenti/` klasörünü seçin.
-3. HBYS'nin Poliklinik ekranını açın, araç çubuğundaki eklenti simgesine
-   tıklayın. Panel HBYS'nin yanında açılır.
-4. **Ayarlar** sekmesinden bir kez ana klasörü gösterin ve anketi uygulayanın
-   adını girin.
+Chrome sürümünü önce doğrulayın: `chrome://version`. Yan panel **114 ve üstü**
+gerektirir.
 
-Bilgi işlem geliştirici modunu grup politikasıyla kapattıysa eklentinin yerel
-bir `.crx` olarak politikayla dağıtılması gerekir.
+**Tek makinede denemek için:** `chrome://extensions` → Geliştirici modu →
+**Paketlenmemiş yükle** → `eklenti/` klasörü (ya da paketten çıkan ZIP'in
+açıldığı klasör).
+
+**Hastane genelinde:** imzalı `.crx`, grup politikasıyla dağıtılır. Eklenti
+kimliği `dcobgmebekokdbfockoamfmdncnojlog`.
+
+Ayrıntılar, politika girdisi ve paketleme:
+[docs/04-kurulum-ve-dagitim.md](docs/04-kurulum-ve-dagitim.md)
+
+İlk açılışta **Ayarlar** sekmesinden ana klasörü gösterin ve anketi uygulayanın
+adını girin.
+
+## Paketleme
+
+```bash
+./araclar/paketle.sh dagitim/imza-anahtari.pem
+```
+
+`dagitim/` altına `.zip` ve imzalı `.crx` üretir. Bu klasör ve imza anahtarı
+depoya girmez.
 
 ## Kullanım
 
@@ -59,6 +72,7 @@ eklenti/          yüklenecek eklenti
   panel/          yan panel arayüzü
   motor/          sorular, PDF işaretleme, kayıt, istatistik, rapor
   varliklar/      boş form, yazı tipi, gömülü kütüphaneler
+araclar/          paketleme betiği
 test/             Node ve Chromium sınamaları
 docs/             çözümleme ve plan belgeleri
 arastirma/        form geometrisi ve doğrulama prototipi
@@ -84,6 +98,7 @@ npm test
 | [docs/01-hbys-veri-kaynaklari.md](docs/01-hbys-veri-kaynaklari.md) | HBYS'den hangi verinin nasıl okunabildiği |
 | [docs/02-form-analizi.md](docs/02-form-analizi.md) | PDF formunun yapısı, işaretleme yöntemi, istatistik notları |
 | [docs/03-ilk-surum-plani.md](docs/03-ilk-surum-plani.md) | Mimari, veri kaydı biçimi, yapım sırası, ön koşullar |
+| [docs/04-kurulum-ve-dagitim.md](docs/04-kurulum-ve-dagitim.md) | Kurulum yolları, grup politikası, imza anahtarı |
 | [eklenti/varliklar/README.md](eklenti/varliklar/README.md) | Gömülü kütüphaneler ve neden yeniden paketlendikleri |
 
 ## Çözümleme çıktıları
