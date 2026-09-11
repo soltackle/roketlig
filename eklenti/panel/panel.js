@@ -449,6 +449,16 @@ async function onayla() {
 
 // ── Klasör ve kuyruk ───────────────────────────────────────
 
+async function klasorSecdir() {
+  try {
+    await kayitDeposu.klasorSec();
+    await durumuTazele();
+    await kuyrugaBak();
+  } catch (e) {
+    if (e?.name !== "AbortError") uyar("hata", "Klasör seçilemedi", String(e.message ?? e));
+  }
+}
+
 async function durumuTazele() {
   const durum = await kayitDeposu.izinDurumu();
   const el = $("rozetKlasor");
@@ -461,6 +471,27 @@ async function durumuTazele() {
     : durum === "sorulmali" ? "Klasör seçili ama tarayıcı yeniden açıldığı için izin tazelenmeli."
     : "Henüz bir klasör seçilmedi.";
   $("btnIzinIste").classList.toggle("gizli", durum !== "sorulmali");
+
+  // Anket sekmesindeki uyarı: klasör olmadan kayıt yazılamaz, düğme elin altında dursun
+  const uyariKutu = $("klasorUyari");
+  uyariKutu.classList.toggle("gizli", durum === "verildi");
+  if (durum === "yok") {
+    $("klasorUyariBaslik").textContent = "Kayıt klasörü seçilmedi";
+    $("klasorUyariMetin").textContent =
+      "Anketler kaydedilemez. Anketlerin tutulacağı klasörü bir kez gösterin; " +
+      "ay klasörlerini eklenti kendisi açar.";
+    $("btnKlasorUyariEylem").textContent = "Ana klasörü seç";
+    $("btnKlasorUyariEylem").onclick = klasorSecdir;
+  } else if (durum === "sorulmali") {
+    $("klasorUyariBaslik").textContent = "Klasör izni tazelenmeli";
+    $("klasorUyariMetin").textContent =
+      "Tarayıcı yeniden açıldığı için Chrome izni yeniden soruyor. Tek tık yeter.";
+    $("btnKlasorUyariEylem").textContent = "İzni onayla";
+    $("btnKlasorUyariEylem").onclick = async () => {
+      if (await kayitDeposu.izinIste()) await kuyrugaBak();
+      await durumuTazele();
+    };
+  }
 
   const bekleyen = await kayitDeposu.kuyrukSayisi();
   const kuyrukRozeti = $("rozetKuyruk");
@@ -597,15 +628,7 @@ function baglaniklariKur() {
   $("btnTemizle").addEventListener("click", taslagiSil);
   $("btnOnizlemeKapat").addEventListener("click", () => $("onizleme").classList.add("gizli"));
 
-  $("btnKlasorSec").addEventListener("click", async () => {
-    try {
-      await kayitDeposu.klasorSec();
-      await durumuTazele();
-      await kuyrugaBak();
-    } catch (e) {
-      if (e?.name !== "AbortError") uyar("hata", "Klasör seçilemedi", String(e.message ?? e));
-    }
-  });
+  $("btnKlasorSec").addEventListener("click", klasorSecdir);
   $("btnIzinIste").addEventListener("click", async () => {
     if (await kayitDeposu.izinIste()) await kuyrugaBak();
     await durumuTazele();

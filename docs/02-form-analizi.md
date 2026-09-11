@@ -102,9 +102,24 @@ yok. Ağız-diş merkezinde her hastaya tetkik yapılmadığı için panelde bir
 
 Hepsi PDF'te olduğu gibi kalacak; bir sonraki revizyonda düzeltilebilir.
 
-### Serbest görüş alanı yok
+### Serbest görüş alanı yok — boş orta sütun kullanılıyor
 
 4. sütunun başlığı "AÇIKLAMA/ÖNERİ" olmasına rağmen sütun 1–5 seçeneklerini
-barındırıyor; hastanın kendi cümlelerini yazacak boş alan yok. Öneri: hastanın
-söyledikleri PDF'e değil, yanındaki veri dosyasına alınsın ve aylık raporda
-listelensin.
+barındırıyor; hastanın kendi cümlelerini yazacak ayrılmış bir alan yok.
+
+Hastanın söyledikleri anketin gerçekten yapıldığına dair delil olduğu için
+forma da düşüyor. Yazıldığı yer, 3. sütunun (304.0–450.2) boş kalan hücreleri:
+
+| Soru | Hücre | Satır kapasitesi (7 pt) |
+|---|---|---|
+| 3 | 497.0–541.4 | 5 |
+| 6 | 641.0–706.9 | 7 |
+| 7 | 714.0–758.1 | 5 — tetkik notu varsa kullanılmaz |
+
+"Hastanın görüşü:" etiketiyle başlıyor, yukarıdan aşağıya bu hücrelere akıyor.
+Toplam kapasite yaklaşık 700 karakter. Sığmazsa son satır
+"(devamı arka sayfada)" notuna ayrılıyor ve kalan metin ek sayfaya taşıyor —
+şablonun 1. sayfası değişmiyor. Ek sayfa gerektiği kadar çoğalıyor; metin
+hiçbir durumda kırpılmıyor.
+
+Aynı metin veri kaydında da tutuluyor ve aylık raporda listeleniyor.

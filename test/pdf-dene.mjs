@@ -1,5 +1,6 @@
 /* motor/pdf.js'i tarayıcı dışında çalıştırıp çıktıyı doğrular. */
 import { readFile, writeFile } from "node:fs/promises";
+import assert from "node:assert/strict";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,6 +24,9 @@ const kayit = {
   katilimci: { tur: "Hasta", cinsiyet: "Erkek", yasGrubu: "50-59", egitim: "Lise" },
   cevaplar: { 1: 4, 2: 5, 3: 3, 4: 5, 5: 4, 6: 5, 7: null, 8: 4 },
   tetkikYok: true,
+  hastaGorusu: "Randevu saatimde alındım, hiç bekletmediler. Doktor hanım çok " +
+               "ilgiliydi, ne yapacağını tek tek anlattı. Yalnız danışmada " +
+               "yönlendirme biraz karışıktı, hangi kata gideceğimi bulamadım.",
   pdfDosya: "ŞÜKRÜ DOĞAN - 11.09.2026 14.32.pdf"
 };
 
@@ -30,3 +34,25 @@ const bayt = await anketiIsaretle(kayit);
 const hedef = process.argv[2] || "/tmp/js-cikti.pdf";
 await writeFile(hedef, bayt);
 console.log(`yazildi: ${hedef} (${(bayt.length / 1024).toFixed(0)} KB)`);
+
+// Çok uzun görüş: taşan kısım ikinci sayfaya düşmeli, metin kaybolmamalı
+const uzun = { ...kayit, tetkikYok: false, cevaplar: { ...kayit.cevaplar, 7: 4 },
+  hastaGorusu: Array.from({ length: 14 }, (_, n) =>
+    `${n + 1}. Hastanede geçirdiğim süre boyunca dikkatimi çeken bir konu vardı ` +
+    "ve bunu ayrıntısıyla anlatmak istiyorum.").join(" ") };
+const uzunBayt = await anketiIsaretle(uzun);
+const uzunHedef = hedef.replace(/\.pdf$/, "-uzun-gorus.pdf");
+await writeFile(uzunHedef, uzunBayt);
+console.log(`yazildi: ${uzunHedef} (${(uzunBayt.length / 1024).toFixed(0)} KB)`);
+
+// --- görüş metni kaybolmamalı --------------------------------------------
+// Delil niteliğinde olduğu için tek bir kelimesi bile düşmemeli.
+const { default: pdfParseYok } = { default: null };
+const sayfaMetni = async (bayt) => {
+  const { PDFDocument } = await import(path.join(kok, "varliklar/pdf-lib.esm.min.js"));
+  const d = await PDFDocument.load(bayt);
+  return d.getPageCount();
+};
+assert.equal(await sayfaMetni(bayt), 1, "kısa görüş tek sayfada kalmalı");
+assert.ok(await sayfaMetni(uzunBayt) >= 2, "uzun görüş için ek sayfa açılmalı");
+console.log("✓ kısa görüş 1 sayfa, uzun görüş ek sayfaya taşıyor");

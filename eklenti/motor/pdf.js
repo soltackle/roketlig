@@ -76,6 +76,124 @@ function halkaYolu(dikdortgenler, rnd) {
 
 const bosMu = (d) => d === null || d === undefined || String(d).trim() === "";
 
+/** Metni verilen genişliğe göre satırlara böler; sığmayan uzun kelimeyi keser. */
+function satirlaraBol(metin, font, punto, genislik) {
+  const satirlar = [];
+  for (const paragraf of String(metin).split(/\r?\n/)) {
+    if (!paragraf.trim()) { satirlar.push(""); continue; }
+    let satir = "";
+    for (const kelime of paragraf.trim().split(/\s+/)) {
+      const aday = satir ? `${satir} ${kelime}` : kelime;
+      if (font.widthOfTextAtSize(aday, punto) <= genislik) { satir = aday; continue; }
+      if (satir) satirlar.push(satir);
+      // Tek başına sığmayan kelimeyi harf harf kır
+      let parca = "";
+      for (const harf of kelime) {
+        if (font.widthOfTextAtSize(parca + harf, punto) > genislik && parca) {
+          satirlar.push(parca);
+          parca = harf;
+        } else {
+          parca += harf;
+        }
+      }
+      satir = parca;
+    }
+    if (satir) satirlar.push(satir);
+  }
+  return satirlar;
+}
+
+/**
+ * Hastanın görüşünü formun boş orta sütun hücrelerine yazar.
+ * Anketin gerçekten yapıldığına dair delil olduğu için metin kaybolmamalı:
+ * hücrelere sığmayan kısım çağıran tarafa geri döner, o da ikinci sayfaya taşır.
+ *
+ * @returns {string[]} yazılamayan satırlar
+ */
+function gorusuYaz(sayfa, yukseklik, gorus, font, tetkikYok) {
+  const { punto, satir_yuksekligi: satirY, etiket } =
+    GEOMETRI.serbest_alanlar.gorus_basligi;
+  const DEVAM = "(devamı arka sayfada)";
+
+  const hucreler = GEOMETRI.gorus_hucreleri
+    .filter((h) => !(h.soru === 7 && tetkikYok));   // o hücrede tetkik notu duruyor
+
+  // Hücrelerin taşıdığı taban çizgileri, yukarıdan aşağıya
+  const yerler = [];
+  for (const h of hucreler) {
+    for (let y = h.y0 + punto; y <= h.y1; y += satirY) yerler.push({ x: h.x0, y });
+  }
+
+  const genislik = hucreler[0].x1 - hucreler[0].x0;
+  const satirlar = [etiket, ...satirlaraBol(gorus, font, punto, genislik)];
+  const tasiyor = satirlar.length > yerler.length;
+  // Taşıyorsa son satır, okuyucuyu arka sayfaya yönlendiren nota ayrılır.
+  const yazilacak = tasiyor ? satirlar.slice(0, yerler.length - 1) : satirlar;
+
+  yazilacak.forEach((satir, n) => {
+    if (!satir) return;
+    sayfa.drawText(satir, {
+      x: yerler[n].x, y: yukseklik - yerler[n].y, size: punto, font, color: KALEM
+    });
+  });
+
+  if (!tasiyor) return [];
+
+  const son = yerler[yazilacak.length];
+  sayfa.drawText(DEVAM, {
+    x: son.x, y: yukseklik - son.y, size: punto, font, color: KALEM
+  });
+  return satirlar.slice(yazilacak.length);
+}
+
+/**
+ * Sığmayan görüş satırları için ek sayfa(lar). Şablonun 1. sayfası değişmez.
+ * Metin delil olduğu için kırpılmaz: kaç sayfa gerekiyorsa o kadar açılır.
+ */
+function gorusDevamSayfalari(belge, font, kayit, satirlar) {
+  const gen = GEOMETRI.sayfa.genislik;
+  const yuk = GEOMETRI.sayfa.yukseklik;
+  const KENAR = 34;
+  const punto = 9.5;
+  const satirY = 12.5;
+  const ilkSatir = 102;
+  const sonSatir = yuk - 52;                 // damga satırının üstünde kalsın
+  const damga = GEOMETRI.serbest_alanlar.damga_satiri;
+
+  // 1. sayfadaki dar sütuna göre bölünmüş satırlar burada yeniden akıtılıyor.
+  const akan = satirlaraBol(satirlar.join(" "), font, punto, gen - 2 * KENAR);
+  const sayfaBasina = Math.max(1, Math.floor((sonSatir - ilkSatir) / satirY) + 1);
+  const toplamSayfa = Math.ceil(akan.length / sayfaBasina);
+
+  for (let n = 0; n < toplamSayfa; n += 1) {
+    const sayfa = belge.addPage([gen, yuk]);
+    const yaz = (metin, x, tabanY, p, renk = SIYAH) =>
+      sayfa.drawText(String(metin), { x, y: yuk - tabanY, size: p, font, color: renk });
+
+    const basSonu = toplamSayfa > 1 ? ` (${n + 1}/${toplamSayfa})` : "";
+    yaz(`HHD.FR.19 HASTA MEMNUNİYET ANKETİ — HASTA GÖRÜŞÜ (devamı)${basSonu}`,
+        KENAR, 60, 11);
+    yaz(`${kayit.hasta?.adSoyad ?? ""} · ${kayit.hasta?.poliklinik ?? ""}`, KENAR, 76, 9.5);
+    sayfa.drawLine({
+      start: { x: KENAR, y: yuk - 84 }, end: { x: gen - KENAR, y: yuk - 84 },
+      thickness: 0.7, color: SIYAH
+    });
+
+    let y = ilkSatir;
+    for (const satir of akan.slice(n * sayfaBasina, (n + 1) * sayfaBasina)) {
+      yaz(satir, KENAR, y, punto, KALEM);
+      y += satirY;
+    }
+
+    yaz(
+      `Anket tarihi: ${kayit.tarihGosterim || kayit.tarih} · Saat: ${kayit.saat} · ` +
+      `Anketi uygulayan: ${kayit.uygulayan || "—"}`,
+      KENAR, damga.taban_y, damga.punto
+    );
+  }
+  return toplamSayfa;
+}
+
 /**
  * @param {object} kayit  Anket veri kaydı (bkz. motor/kayit.js)
  * @returns {Promise<Uint8Array>} işaretlenmiş PDF
@@ -149,13 +267,21 @@ export async function anketiIsaretle(kayit) {
     yaz(SORULAR.find((s) => s.no === 7).kosulEtiketi, a.x, a.taban_y, a.punto);
   }
 
-  // 5) Onay damgası
+  // 5) Hastanın görüşü — anketin yapıldığına dair delil olduğu için forma
+  //    da düşer. Boş orta sütuna sığmayan kısım ikinci sayfaya taşar.
+  const tasan = bosMu(kayit.hastaGorusu)
+    ? []
+    : gorusuYaz(sayfa, yukseklik, kayit.hastaGorusu.trim(), font, kayit.tetkikYok);
+
+  // 6) Onay damgası
   const d = alanlar.damga_satiri;
   yaz(
     `Anket tarihi: ${kayit.tarihGosterim || kayit.tarih} · Saat: ${kayit.saat} · ` +
     `Anketi uygulayan: ${kayit.uygulayan || "—"}`,
     d.x, d.taban_y, d.punto, SIYAH
   );
+
+  if (tasan.length) gorusDevamSayfalari(belge, font, kayit, tasan);
 
   belge.setTitle(`HHD.FR.19 Hasta Memnuniyet Anketi — ${kayit.hasta?.adSoyad ?? ""}`.trim());
   belge.setSubject(GEOMETRI.kaynak);

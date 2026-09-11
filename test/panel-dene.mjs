@@ -77,6 +77,14 @@ try {
   assert.match(not7, /Tetkik yaptırmadı/);
   console.log('✓ "tetkik yok" 7. soruyu kapsam dışına alıyor');
 
+  // Klasör seçilmemişken Anket sekmesinde uyarı ve düğme görünmeli.
+  assert.ok(await sayfa.locator("#klasorUyari").isVisible(),
+    "klasör yokken Anket sekmesinde uyarı görünmeli");
+  assert.equal(
+    (await sayfa.locator("#btnKlasorUyariEylem").textContent()).trim(),
+    "Ana klasörü seç");
+  console.log("✓ klasör uyarısı ve düğmesi Anket sekmesinde görünüyor");
+
   // Hasta yakını seçilince cinsiyet ve yaş boşalmalı.
   await sayfa.locator("#cinsiyetSecim .secim", { hasText: "Erkek" }).click();
   await sayfa.locator("#katilanSecim .secim", { hasText: "Hasta yakını" }).click();

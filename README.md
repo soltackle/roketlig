@@ -40,9 +40,10 @@ Panelde önce **görüşme sonucu** seçilir. Ulaşılamayan görüşmeler PDF's
 olarak tutulur; ulaşılma oranı ve tekrar aranacaklar listesi bunlardan çıkar.
 
 Ulaşıldıysa form açılır. Cevaplar **1–5 tuşlarıyla** girilir, her seçimde
-taslak kendiliğinden kaydedilir. Onaydan önce doldurulmuş PDF önizlenir;
-onaya basıldığında en alta tarih-saat-uygulayan damgası düşer ve kayıt
-kilitlenir.
+taslak kendiliğinden kaydedilir. Hastanın kendi cümleleri formun boş orta
+sütununa yazılır — anketin gerçekten yapıldığına dair delil; sığmazsa arkaya
+ek sayfa eklenir. Onaydan önce doldurulmuş PDF önizlenir; onaya basıldığında
+en alta tarih-saat-uygulayan damgası düşer ve kayıt kilitlenir.
 
 Dosyalar şu yapıya yazılır:
 

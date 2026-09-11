@@ -60,6 +60,11 @@
    "taban_y": 735.0,
    "punto": 8.5,
    "not": "7. soru satirinin bos orta sutunu (304.0-450.2 / 710.4-761.6)"
+  },
+  "gorus_basligi": {
+   "punto": 7.0,
+   "satir_yuksekligi": 8.4,
+   "etiket": "Hastanın görüşü:"
   }
  },
  "parantez_kutulari": {
@@ -529,6 +534,31 @@
   "1/4 ve 7/4 onceki secenekle ayni satiri paylasiyor (x 493.1 / 491.3 ten baslar).",
   "5/3-5/4 ve 8/2-8/3 tek satirda yan yana.",
   "Sablonda AcroForm alani yok; isaretleme mevcut sayfa uzerine cizilir.",
-  "Gomulu yazi tipleri alt kume (subset) - yeniden kullanilamaz, kendi TTF'imiz gomulmeli."
+  "Gomulu yazi tipleri alt kume (subset) - yeniden kullanilamaz, kendi TTF'imiz gomulmeli.",
+  "Hasta gorusu 3., 6. ve 7. sorularin bos orta sutununa yazilir; sigmayan kisim ikinci sayfaya tasar, sablonun 1. sayfasi degismez."
+ ],
+ "gorus_hucreleri": [
+  {
+   "soru": 3,
+   "x0": 307.5,
+   "y0": 497.0,
+   "x1": 446.7,
+   "y1": 541.4
+  },
+  {
+   "soru": 6,
+   "x0": 307.5,
+   "y0": 641.0,
+   "x1": 446.7,
+   "y1": 706.9
+  },
+  {
+   "soru": 7,
+   "x0": 307.5,
+   "y0": 714.0,
+   "x1": 446.7,
+   "y1": 758.1,
+   "not": "tetkik yok notu bu hucrede duruyorsa gorus icin kullanilmaz"
+  }
  ]
 }

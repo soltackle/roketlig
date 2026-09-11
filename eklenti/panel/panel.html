@@ -25,6 +25,15 @@
 <!-- ══════════════════════ ANKET ══════════════════════ -->
 <section id="sekmeAnket" class="sekme-icerik">
 
+  <!-- Klasör seçilmeden kaydedilemez; uyarı ve düğme burada, elin altında -->
+  <div id="klasorUyari" class="uyari-kutu gizli">
+    <strong id="klasorUyariBaslik"></strong>
+    <span id="klasorUyariMetin"></span>
+    <div class="satir">
+      <button id="btnKlasorUyariEylem" class="birincil" type="button"></button>
+    </div>
+  </div>
+
   <div id="uyariAlani"></div>
 
   <!-- Hasta -->
@@ -86,8 +95,9 @@
     </fieldset>
 
     <fieldset>
-      <legend>Hastanın görüşü <span class="not">PDF'e yazılmaz</span></legend>
+      <legend>Hastanın görüşü <span class="not">forma ve rapora düşer</span></legend>
       <textarea id="alanGorus" rows="3" placeholder="Hastanın kendi cümleleri…"></textarea>
+      <p class="not">Formun boş orta sütununa yazılır; sığmazsa arkaya ek sayfa eklenir.</p>
     </fieldset>
 
   </div>

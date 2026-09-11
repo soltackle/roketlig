@@ -57,7 +57,8 @@ HBYS'ye tıklamak cevapları kaybettirmez.
    **boşaltılır**; bunlar ankete katılanın bilgisi, hastanın değil.
 5. **8 soru** — klavyede 1–5 ile cevap, otomatik sonraki soruya geçiş.
    7. soruda ayrıca "tetkik yok" düğmesi.
-6. **Hastanın görüşü** — serbest metin. PDF'e yazılmaz, veri kaydına girer.
+6. **Hastanın görüşü** — serbest metin. Hem veri kaydına girer hem de formun
+   boş orta sütununa yazılır; anketin yapıldığına dair delil.
 7. **Önizleme** — doldurulmuş PDF panelde gösterilir.
 8. **Onay** — en alta damga satırı düşer, kayıt kilitlenir.
 
@@ -77,6 +78,7 @@ metinleri çalışma anında ayrıştırılmıyor (gerekçesi:
 - Seçilen cevabın etrafına kalemle çizilmiş izlenimi veren halka
 - Ad-soyad, telefon, poliklinik iki noktanın yanına
 - Tetkik yoksa 7. sorunun boş orta sütununa not
+- Hastanın görüşü, boş orta sütun hücrelerine; sığmazsa ek sayfaya
 - En alta: `Anket tarihi: … · Saat: … · Anketi uygulayan: …`
 
 Türkçe TTF gömülü ve `subset: true` ile alt kümeleniyor.
