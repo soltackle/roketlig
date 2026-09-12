@@ -93,16 +93,21 @@ yapılan hekimler listeye kendiliğinden düşüyor. Eşleme ana klasördeki
 görüyor. Eşleme girildiği anda hem yeni anketlerin polikliniği doğru geliyor
 hem eski kayıtlar rapor ve liste üretilirken düzeltiliyor.
 
-Kullanımı tek alan: polikliniği yazıp **Güncelle**. Daha önce girilmiş bir adı
-değiştiriyorsanız, bunun bir yazım düzeltmesi mi yoksa hekimin gerçekten
-taşınması mı olduğu sorulur:
+Kurumdaki poliklinikler Ayarlar'da bir kez yazılır (her satıra bir tane).
+Hekim eşlemesinde ve anket ekranında bu listeden **seçilir**, elle
+yazılmaz — aynı birim iki farklı yazımla ikiye bölünmez.
 
-- **Yazım düzeltmesi** — eski anketler de yeni adla görünür
-- **Hekim taşındı** — bugünden itibaren geçerli olur, o tarihten önceki
-  anketler eski poliklinikte kalır
+Hekimin polikliniği listeden seçildiği anda kaydedilir; ayrıca bir düğmeye
+basmak gerekmez. Yalnızca **daha önce atanmış** bir polikliniği
+değiştirirseniz tek bir soru çıkar:
 
-Tarihi eklenti kendisi tutar; kutuya tarih yazmanız gerekmez. Geçmiş dönemler
-hekimin altında "Önce: Ortodonti (12.09.2026 öncesi)" diye görünür.
+- **Yanlış atanmış** — bütün anketler yeni poliklinikte görünür
+- **Taşındı** — bugünden itibaren geçerli olur, o tarihten önceki anketler
+  eski poliklinikte kalır
+
+Tarihi eklenti kendisi tutar. Geçmiş dönemler hekimin altında
+"Önce: Ortodonti (12.09.2026 öncesi)" diye görünür. Bu soru anket sırasında
+hiç çıkmaz.
 
 Polikliniği girilmemiş hekim varsa Ayarlar uyarır; anket sırasında da hasta
 kartının altında "bu hekimin polikliniği tanımlı değil" notu çıkar.

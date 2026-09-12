@@ -118,6 +118,14 @@ try {
     "varsayılanda bir kısmı işaretli olmalı");
   console.log(`✓ ${bolumSayisi} rapor bölümü seçilebiliyor`);
 
+  // Önce poliklinik listesi girilir; hekim eşlemesi bu listeden seçer
+  await sayfa.locator("#alanPoliklinikler")
+    .fill("Ortodonti\nPeriodontoloji\nRestoratif Diş Tedavisi");
+  await sayfa.locator("#btnPoliklinikKaydet").click();
+  await sayfa.waitForFunction(() =>
+    document.getElementById("poliklinikDurum").textContent.includes("3 poliklinik"));
+  console.log("✓ poliklinik listesi kaydediliyor");
+
   await sayfa.locator("#alanYeniHekim").fill("Dt. Ayşe DEMİR");
   await sayfa.locator("#btnHekimEkle").click();
   await sayfa.waitForSelector(".hekim-kutu");
@@ -127,29 +135,34 @@ try {
   assert.ok(await sayfa.locator("#hekimEksikUyari").isVisible(),
     "eksik poliklinik uyarısı görünmeli");
 
-  // İlk giriş sorusuz uygulanmalı
-  await sayfa.locator(".hekim-satir input").first().fill("Ortodonti");
-  await sayfa.locator(".hekim-kutu .guncelle").click();
+  // Seçenekler poliklinik listesinden gelmeli
+  const secenekAdlari = await sayfa.locator(".hekim-satir select option")
+    .allTextContents();
+  assert.deepEqual(secenekAdlari,
+    ["— seçilmedi —", "Ortodonti", "Periodontoloji", "Restoratif Diş Tedavisi"],
+    "hekim satırı tanımlı poliklinikleri listelemeli");
+
+  // İlk seçim sorusuz uygulanmalı
+  await sayfa.locator(".hekim-satir select").selectOption("Ortodonti");
   await sayfa.waitForSelector(".hekim-kutu .ad.eksik", { state: "detached" });
   assert.equal(await sayfa.locator(".hekim-kutu .secim-sor").count(), 0,
     "ilk girişte soru sorulmamalı");
   await sayfa.waitForSelector("#hekimEksikUyari", { state: "hidden" });
   console.log("✓ hekim eklenip polikliniği tek adımda giriliyor");
 
-  // Var olan adı değiştirince düzeltme mi taşınma mı diye sorulmalı
-  await sayfa.locator(".hekim-satir input").first().fill("Periodontoloji");
-  await sayfa.locator(".hekim-kutu .guncelle").click();
+  // Atanmış polikliniği değiştirince taşınma mı yanlış atama mı diye sorulmalı
+  await sayfa.locator(".hekim-satir select").selectOption("Periodontoloji");
   await sayfa.waitForSelector(".hekim-kutu .secim-sor");
   const secenekler = await sayfa.locator(".hekim-kutu .secim-sor button")
     .allTextContents();
-  assert.deepEqual(secenekler, ["Yazım düzeltmesi", "Hekim taşındı"]);
+  assert.deepEqual(secenekler, ["Yanlış atanmış", "Taşındı"]);
 
-  await sayfa.locator(".hekim-kutu .secim-sor button", { hasText: "Hekim taşındı" })
+  await sayfa.locator(".hekim-kutu .secim-sor button", { hasText: "Taşındı" })
     .click();
   await sayfa.waitForSelector(".hekim-kutu .gecmis");
   const gecmis = await sayfa.locator(".hekim-kutu .gecmis").textContent();
   assert.match(gecmis, /Ortodonti/, "eski poliklinik geçmişte görünmeli");
-  assert.equal(await sayfa.locator(".hekim-satir input").first().inputValue(),
+  assert.equal(await sayfa.locator(".hekim-satir select").inputValue(),
     "Periodontoloji", "güncel poliklinik yeni olmalı");
   console.log("✓ taşınmada eski poliklinik geçmişte tutuluyor");
 

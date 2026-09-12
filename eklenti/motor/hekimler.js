@@ -42,6 +42,14 @@ export function tariheCevir(ham) {
  * "başından beri" demektir ve en başa gelir.
  */
 function duzenle(ham) {
+  // Kurumda birkaç poliklinik var; adları bir kez girilip listeden seçiliyor.
+  // Böylece yazım farkı ("Ortodont" / "Ortodonti") kırılımı ikiye bölmüyor.
+  const poliklinikler = [...new Set(
+    (Array.isArray(ham?.poliklinikler) ? ham.poliklinikler : [])
+      .map((a) => String(a ?? "").trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, "tr"));
+
   const eslesme = {};
   for (const [ad, deger] of Object.entries(ham?.eslesme ?? {})) {
     const anahtar = hekimAnahtari(ad);
@@ -61,7 +69,7 @@ function duzenle(ham) {
 
     if (donemler.length) eslesme[anahtar] = donemler;
   }
-  return { surum: 2, guncelleme: ham?.guncelleme ?? null, eslesme };
+  return { surum: 3, guncelleme: ham?.guncelleme ?? null, poliklinikler, eslesme };
 }
 
 /** Klasördeki eşlemeyi okur; yoksa tarayıcıdaki kopyaya düşer. */
@@ -76,10 +84,16 @@ export async function eslemeOku() {
   return { ...duzenle(kutu[YEREL_ANAHTAR]), kaynak: "yerel" };
 }
 
-export async function eslemeYaz(eslesme) {
-  const nesne = duzenle({ eslesme, guncelleme: new Date().toISOString() });
+export async function eslemeYaz(eslesme, poliklinikler) {
+  const nesne = duzenle({
+    eslesme, poliklinikler, guncelleme: new Date().toISOString()
+  });
   await chrome.storage.local.set({ [YEREL_ANAHTAR]: nesne });
-  return { klasoreYazildi: await ayarYaz(DOSYA, nesne), esleme: nesne.eslesme };
+  return {
+    klasoreYazildi: await ayarYaz(DOSYA, nesne),
+    esleme: nesne.eslesme,
+    poliklinikler: nesne.poliklinikler
+  };
 }
 
 /**
@@ -187,11 +201,14 @@ export function eksikHekimler(kayitlar, eslesme) {
   return [...sayac.values()].sort((a, b) => b.adet - a.adet);
 }
 
-/** Eşlemede geçen poliklinik adları — girişte öneri listesi olur. */
-export function poliklinikAdlari(eslesme) {
-  const adlar = new Set();
+/**
+ * Seçim listesi: tanımlı poliklinikler, artı eşlemede geçip listede olmayanlar.
+ * İkincisi, liste sonradan daraltılsa bile eski atamaların kaybolmaması için.
+ */
+export function poliklinikAdlari(eslesme, tanimli = []) {
+  const adlar = new Set(tanimli);
   for (const donemler of Object.values(eslesme ?? {})) {
     for (const d of donemler) adlar.add(d.poliklinik);
   }
-  return [...adlar].sort((a, b) => a.localeCompare(b, "tr"));
+  return [...adlar].filter(Boolean).sort((a, b) => a.localeCompare(b, "tr"));
 }

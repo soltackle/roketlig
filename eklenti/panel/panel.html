@@ -66,7 +66,7 @@
       <label>T.C. kimlik no <input id="alanTc" type="text" inputmode="numeric"
                                    maxlength="11" autocomplete="off"></label>
       <label>Telefon <input id="alanTelefon" type="text" autocomplete="off"></label>
-      <label>Poliklinik <input id="alanPoliklinik" type="text" autocomplete="off">
+      <label>Poliklinik <select id="alanPoliklinik"></select>
         <span id="notPoliklinik" class="not gizli">HBYS önerisi — doğrulayın</span>
         <span id="notPoliklinikEksik" class="not uyari gizli">
           Bu hekimin polikliniği tanımlı değil. Ayarlar sekmesindeki hekim
@@ -205,18 +205,35 @@
   </fieldset>
 
   <fieldset>
+    <legend>Poliklinikler</legend>
+    <p class="not">
+      Kurumdaki poliklinikleri bir kez yazın; her satıra bir tane. Hekim
+      eşlemesinde ve anket ekranında bu listeden seçilir, elle yazılmaz —
+      böylece aynı birim iki farklı yazımla ikiye bölünmez.
+    </p>
+    <textarea id="alanPoliklinikler" rows="5"
+              placeholder="Ağız, Diş ve Çene Cerrahisi&#10;Restoratif Diş Tedavisi&#10;Ortodonti&#10;Periodontoloji"></textarea>
+    <div class="satir">
+      <button id="btnPoliklinikKaydet" class="birincil" type="button">
+        Poliklinik listesini kaydet
+      </button>
+    </div>
+    <p id="poliklinikDurum" class="not"></p>
+  </fieldset>
+
+  <fieldset>
     <legend>Hekim – poliklinik eşlemesi</legend>
     <p class="not">
       HBYS'de birim bilgisi dağınık olduğu için poliklinik buradan çözülüyor.
-      Anket yapılan hekimler listeye kendiliğinden düşer; karşılarına
-      polikliniği yazmanız yeterli. Eşleme ana klasöre yazılır, diğer
+      Anket yapılan hekimler listeye kendiliğinden düşer; karşılarından
+      polikliniği seçmeniz yeterli. Eşleme ana klasöre yazılır, diğer
       bilgisayar da aynı listeyi görür.
     </p>
     <p class="not">
-      Polikliniği yazıp <strong>Güncelle</strong>'ye basın. Daha önce girilmiş
-      bir adı değiştiriyorsanız, bunun yazım düzeltmesi mi yoksa hekimin
-      gerçekten taşınması mı olduğu sorulur — taşınmada eski anketler eski
-      poliklinikte kalır.
+      Listeden seçmeniz yeterli, kendiliğinden kaydedilir. Daha önce atanmış
+      bir polikliniği değiştirirseniz tek bir soru çıkar: hekim taşındı mı,
+      yoksa baştan yanlış mı atanmıştı? Taşınmada eski anketler eski
+      poliklinikte kalır. Anket sırasında bu soru hiç çıkmaz.
     </p>
     <p id="hekimEksikUyari" class="not uyari gizli"></p>
     <div id="hekimListesi"></div>
