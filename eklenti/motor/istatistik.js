@@ -7,7 +7,7 @@
  */
 
 import { SORULAR, GORUSME_SONUCLARI, puanlanirMi, kapsamDisiMi } from "./sorular.js";
-import { saatFarki } from "./zaman.js";
+import { saatFarki, zamanaCevir } from "./zaman.js";
 
 const cevapAl = (kayit, no) => kayit.cevaplar?.[no] ?? kayit.cevaplar?.[String(no)] ?? null;
 
@@ -44,8 +44,57 @@ function kirilim(kayitlar, etiketle) {
     }
   }
   return [...gruplar.values()]
-    .map((g) => ({ ...g, ortalama: bolum(g.toplam, g.puanli) }))
+    .map((g) => ({ ...g, ortalama: bolum(g.toplam, g.puanli), az: g.adet < EN_AZ_ANKET }))
     .sort((a, b) => (b.ortalama ?? -1) - (a.ortalama ?? -1));
+}
+
+/** Bu sayının altındaki kırılım satırları güvenilir sayılmaz, işaretlenir. */
+export const EN_AZ_ANKET = 5;
+
+const GUNLER = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+
+const SAAT_DILIMLERI = [
+  { etiket: "08:00–10:00", bas: 8, bit: 10 },
+  { etiket: "10:00–12:00", bas: 10, bit: 12 },
+  { etiket: "12:00–14:00", bas: 12, bit: 14 },
+  { etiket: "14:00–16:00", bas: 14, bit: 16 },
+  { etiket: "16:00–18:00", bas: 16, bit: 18 }
+];
+
+/** "14:32" ya da zaman damgasından saati çıkarır. */
+function saatiAl(kayit) {
+  const m = /^(\d{1,2}):/.exec(String(kayit.saat ?? ""));
+  if (m) return Number(m[1]);
+  const d = zamanaCevir(kayit.zamanDamgasi);
+  return d ? d.getHours() : null;
+}
+
+/** Arama ve ulaşma sayısını gruplayıp oranı hesaplayan ortak kalıp. */
+function ulasmaKirilimi(kayitlar, etiketle) {
+  const gruplar = new Map();
+  for (const k of kayitlar) {
+    const etiket = etiketle(k);
+    if (etiket === null || etiket === undefined) continue;
+    if (!gruplar.has(etiket)) gruplar.set(etiket, { etiket, arama: 0, ulasilan: 0 });
+    const g = gruplar.get(etiket);
+    g.arama += 1;
+    if (k.gorusmeSonucu === "ulasildi") g.ulasilan += 1;
+  }
+  return [...gruplar.values()].map((g) => ({ ...g, oran: bolum(g.ulasilan, g.arama) }));
+}
+
+/** Bir kayıt kümesinin puanlanabilir cevap ortalaması. */
+function ortalamaPuan(kayitlar) {
+  let toplam = 0, adet = 0;
+  for (const k of kayitlar) {
+    for (const soru of SORULAR) {
+      const cevap = cevapAl(k, soru.no);
+      if (!puanlanirMi(soru.no, cevap, k.tetkikYok, k.formSurum)) continue;
+      toplam += cevap;
+      adet += 1;
+    }
+  }
+  return { ortalama: bolum(toplam, adet), cevapAdedi: adet };
 }
 
 export function hesapla(hamKayitlar) {
@@ -173,6 +222,125 @@ export function hesapla(hamKayitlar) {
       sonuc: sonucAdlari.get(k.gorusmeSonucu) ?? k.gorusmeSonucu
     }));
 
+  // --- Zaman: hangi saatte, hangi gün arandığında ulaşılıyor
+  const saatDilimleri = SAAT_DILIMLERI.map((d) => {
+    const icinde = kayitlar.filter((k) => {
+      const s = saatiAl(k);
+      return s !== null && s >= d.bas && s < d.bit;
+    });
+    const ulasilan = icinde.filter((k) => k.gorusmeSonucu === "ulasildi").length;
+    return { etiket: d.etiket, arama: icinde.length, ulasilan,
+             oran: bolum(ulasilan, icinde.length) };
+  });
+  const dilimDisi = kayitlar.filter((k) => {
+    const s = saatiAl(k);
+    return s === null || s < 8 || s >= 18;
+  });
+  if (dilimDisi.length) {
+    const ulasilan = dilimDisi.filter((k) => k.gorusmeSonucu === "ulasildi").length;
+    saatDilimleri.push({ etiket: "Diğer saatler", arama: dilimDisi.length, ulasilan,
+                         oran: bolum(ulasilan, dilimDisi.length) });
+  }
+
+  const gunler = ulasmaKirilimi(kayitlar, (k) => {
+    const d = zamanaCevir(k.zamanDamgasi);
+    return d ? GUNLER[d.getDay()] : null;
+  }).sort((a, b) => GUNLER.indexOf(a.etiket) - GUNLER.indexOf(b.etiket));
+
+  // --- Tekrar aramanın getirisi: kaçıncı denemede ulaşıldı
+  const hastaAramalari = new Map();
+  for (const k of [...kayitlar].sort((a, b) =>
+      String(a.zamanDamgasi ?? "").localeCompare(String(b.zamanDamgasi ?? "")))) {
+    const id = kimlik(k);
+    if (!id) continue;
+    if (!hastaAramalari.has(id)) hastaAramalari.set(id, []);
+    hastaAramalari.get(id).push(k);
+  }
+  const denemeler = [];
+  for (const [, aramalar] of hastaAramalari) {
+    const sira = aramalar.findIndex((k) => k.gorusmeSonucu === "ulasildi");
+    denemeler.push({ deneme: aramalar.length, ulasilanSira: sira < 0 ? null : sira + 1 });
+  }
+  const enFazlaDeneme = denemeler.reduce((m, d) => Math.max(m, d.deneme), 0);
+  const tekrarArama = [];
+  let birikenUlasilan = 0;
+  for (let n = 1; n <= Math.max(1, enFazlaDeneme); n += 1) {
+    const buAdimda = denemeler.filter((d) => d.ulasilanSira === n).length;
+    birikenUlasilan += buAdimda;
+    tekrarArama.push({
+      deneme: n,
+      buAdimda,
+      biriken: birikenUlasilan,
+      birikenOran: bolum(birikenUlasilan, denemeler.length)
+    });
+  }
+
+  // --- Ay içinde anketlerin günlere dağılımı
+  const gunSayaci = new Map();
+  for (const k of kayitlar) {
+    const d = zamanaCevir(k.zamanDamgasi);
+    if (!d) continue;
+    const gun = d.getDate();
+    gunSayaci.set(gun, (gunSayaci.get(gun) ?? 0) + 1);
+  }
+  const ayIciDagilim = [...gunSayaci.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([gun, adet]) => ({ gun, adet }));
+
+  // --- Poliklinik x soru: sorun hangi birimde, hangi başlıkta
+  const poliklinikler = [...new Set(anketli.map((k) => k.hasta?.poliklinik).filter(Boolean))];
+  const poliklinikSoruMatrisi = poliklinikler.map((ad) => {
+    const grubu = anketli.filter((k) => k.hasta?.poliklinik === ad);
+    return {
+      etiket: ad,
+      adet: grubu.length,
+      az: grubu.length < EN_AZ_ANKET,
+      sorular: SORULAR.map((soru) => {
+        let toplam = 0, puanli = 0;
+        for (const k of grubu) {
+          const cevap = cevapAl(k, soru.no);
+          if (!puanlanirMi(soru.no, cevap, k.tetkikYok, k.formSurum)) continue;
+          toplam += cevap;
+          puanli += 1;
+        }
+        return { no: soru.no, ortalama: bolum(toplam, puanli), puanli };
+      })
+    };
+  }).sort((a, b) => b.adet - a.adet);
+
+  // --- Telefon numarası hatalı çıkanlar hangi birimden geliyor
+  const numaraHatali = ulasmaKirilimi(
+    kayitlar.filter((k) => k.gorusmeSonucu === "numara_hatali"),
+    (k) => k.hasta?.poliklinik ?? "Belirtilmemiş"
+  ).map(({ etiket, arama }) => ({ etiket, adet: arama }))
+   .sort((a, b) => b.adet - a.adet);
+
+  // --- Anketi uygulayan: iş yükü ve ulaşma oranı
+  const uygulayanlar = ulasmaKirilimi(kayitlar, (k) => k.uygulayan || "Belirtilmemiş")
+    .sort((a, b) => b.arama - a.arama);
+
+  // --- Dönüş süresi ile memnuniyet ilişkisi
+  const DONUS_ARALIKLARI = [
+    { etiket: "Aynı gün – 1 gün", enAz: 0, enCok: 24 },
+    { etiket: "2–3 gün", enAz: 24, enCok: 72 },
+    { etiket: "4–7 gün", enAz: 72, enCok: 168 },
+    { etiket: "8 gün ve üstü", enAz: 168, enCok: Infinity }
+  ];
+  const donusMemnuniyet = DONUS_ARALIKLARI.map((a) => {
+    const grubu = anketli.filter((k) => {
+      const s = saatFarki(k.hasta?.muayeneZamani ?? k.hasta?.islemTarihi, k.zamanDamgasi);
+      return s !== null && s >= 0 && s >= a.enAz && s < a.enCok;
+    });
+    const { ortalama } = ortalamaPuan(grubu);
+    return { etiket: a.etiket, adet: grubu.length, ortalama, az: grubu.length < EN_AZ_ANKET };
+  });
+
+  // --- Net memnuniyet: 4-5 verenler eksi 1-2 verenler
+  const birIki = sorular.reduce((t, s) => t + s.dagilim[0] + s.dagilim[1], 0);
+  const netMemnuniyet = puanliAdet
+    ? bolum(dortBesToplam, puanliAdet) - bolum(birIki, puanliAdet)
+    : null;
+
   return {
     arananlar,
     ulasilanlar,
@@ -202,7 +370,18 @@ export function hesapla(hamKayitlar) {
     },
     dof,
     gorusler,
-    tekrarAranacaklar
+    tekrarAranacaklar,
+    netMemnuniyet,
+    birIkiOrani: puanliAdet ? bolum(birIki, puanliAdet) : null,
+    saatDilimleri,
+    gunler,
+    tekrarArama,
+    denemeSayisi: denemeler.length,
+    ayIciDagilim,
+    poliklinikSoruMatrisi,
+    numaraHatali,
+    uygulayanlar,
+    donusMemnuniyet
   };
 }
 

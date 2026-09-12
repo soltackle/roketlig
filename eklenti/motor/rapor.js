@@ -6,7 +6,7 @@
  * Yazdır → PDF ile A4'e basılır.
  */
 
-import { hesapla, karsilastir, sayi, yuzde } from "./istatistik.js";
+import { hesapla, karsilastir, sayi, yuzde, EN_AZ_ANKET } from "./istatistik.js";
 import { sureGoster } from "./zaman.js";
 
 const AY_ADLARI = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -31,6 +31,30 @@ export function oncekiAyKlasoru(ayKlasoru) {
   if (ay === 0) { ay = 12; yil -= 1; }
   return `${yil}-${String(ay).padStart(2, "0")} ${AY_ADLARI[ay - 1]}`;
 }
+
+/**
+ * Rapordaki bölümler. Hangilerinin görüneceği Ayarlar'dan seçiliyor;
+ * `varsayilan: true` olanlar hiç seçim yapılmamışsa görünür.
+ */
+export const BOLUMLER = [
+  { id: "kapsam",        ad: "Kapsam ve hedef",                 varsayilan: true },
+  { id: "sorular",       ad: "Soru bazlı sonuçlar",             varsayilan: true },
+  { id: "kirilim",       ad: "Poliklinik ve hekim kırılımı",    varsayilan: true },
+  { id: "matris",        ad: "Poliklinik × soru matrisi",       varsayilan: false },
+  { id: "profil",        ad: "Katılımcı profili",               varsayilan: true },
+  { id: "saat",          ad: "Saat ve gün analizi",             varsayilan: false },
+  { id: "tekrar",        ad: "Tekrar aramanın getirisi",        varsayilan: false },
+  { id: "dagilim",       ad: "Ay içinde anketlerin dağılımı",   varsayilan: false },
+  { id: "donus",         ad: "Dönüş süresi ve memnuniyet",      varsayilan: false },
+  { id: "numaraHatali",  ad: "Numara hatalı çıkanlar — birim kırılımı", varsayilan: false },
+  { id: "uygulayan",     ad: "Anketi uygulayan kırılımı",       varsayilan: false },
+  { id: "dof",           ad: "DÖF — 2 ve altı puan verilen cevaplar", varsayilan: true },
+  { id: "gorusler",      ad: "Hastaların serbest görüşleri",    varsayilan: true },
+  { id: "tekrarAranacak", ad: "Tekrar aranacaklar",             varsayilan: true }
+];
+
+export const VARSAYILAN_BOLUMLER =
+  BOLUMLER.filter((b) => b.varsayilan).map((b) => b.id);
 
 // --- Parçalar -------------------------------------------------------------
 
@@ -82,17 +106,24 @@ function bolum(baslik, icerik, aciklama = "") {
   </section>`;
 }
 
+/** Anket sayısı eşiğin altındaki satır yıldızla işaretlenir. */
+const azIsareti = (g) => (g.az ? ' <span class="az" title="anket sayısı az">*</span>' : "");
+
 function kirilimTablosu(baslik, satirlar) {
-  return tablo(
+  const govde = tablo(
     [baslik, "Anket", "Ortalama", "Memnuniyet"],
     satirlar.map((g) => [
-      kacis(g.etiket),
+      kacis(g.etiket) + azIsareti(g),
       sayi(g.adet),
       g.ortalama === null ? "—" : sayi(g.ortalama, 2),
       g.ortalama === null ? "—" : yuzde(g.ortalama / 5)
     ]),
     ["", "say", "say", "say"]
   );
+  return satirlar.some((g) => g.az)
+    ? govde + `<p class="dipnot">* ${EN_AZ_ANKET} anketten az; ortalama tek bir ` +
+              "cevaptan etkilenebilir, tek başına karar dayanağı yapılmamalı.</p>"
+    : govde;
 }
 
 // --- Biçem ----------------------------------------------------------------
@@ -140,6 +171,12 @@ h2 {
   padding-bottom: 5px; border-bottom: 1px solid var(--cizgi);
 }
 .aciklama { margin: 0 0 10px; font-size: 12px; color: var(--soluk); }
+.dipnot { margin: 6px 0 0; font-size: 11px; color: var(--soluk); }
+.az { color: var(--kotu); font-weight: 700; }
+.cubuk { display: flex; align-items: flex-end; gap: 2px; height: 46px; margin-top: 4px; }
+.cubuk i { flex: 1; background: var(--vurgu); border-radius: 2px 2px 0 0; min-width: 3px; }
+.cubuk-etiket { display: flex; gap: 2px; font-size: 9px; color: var(--soluk); margin-top: 3px; }
+.cubuk-etiket span { flex: 1; text-align: center; min-width: 3px; }
 
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
 th, td { border: 1px solid var(--cizgi); padding: 5px 7px; text-align: left; vertical-align: top; }
@@ -199,9 +236,11 @@ footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid var(--cizgi)
  * @param {object[]|null} oncekiKayitlar  önceki ayın kayıtları (varsa)
  * @param {{gelenHasta:number, oran:number}|null} hedef  kuruma gelen hasta
  *        sayısı ve aranması gereken oran (elle girilir)
+ * @param {string[]} secili  gösterilecek bölüm kimlikleri (bkz. BOLUMLER)
  * @returns {string} kendi içinde yeterli, yazdırmaya hazır HTML
  */
-export function raporUret(ayKlasoru, kayitlar, oncekiKayitlar = null, hedef = null) {
+export function raporUret(ayKlasoru, kayitlar, oncekiKayitlar = null, hedef = null,
+                          secili = VARSAYILAN_BOLUMLER) {
   const donem = donemEtiketi(ayKlasoru);
   const i = hesapla(kayitlar);
   const onceki = oncekiKayitlar && oncekiKayitlar.length ? hesapla(oncekiKayitlar) : null;
@@ -227,11 +266,21 @@ export function raporUret(ayKlasoru, kayitlar, oncekiKayitlar = null, hedef = nu
     ${kart("Memnuniyet (4-5 verenler)",
            `${yuzde(i.genelDortBesOrani)} ${fark(
              k?.genelDortBesOrani == null ? null : k.genelDortBesOrani * 100, 1, " puan")}`)}
+    ${kart("Net memnuniyet",
+           i.netMemnuniyet === null ? "—" : yuzde(i.netMemnuniyet),
+           i.netMemnuniyet === null ? ""
+             : `4-5 verenler ${yuzde(i.genelDortBesOrani)} · 1-2 verenler ${yuzde(i.birIkiOrani)}`)}
     ${kart("Ortalama dönüş süresi",
            i.ortalamaDonus === null ? "—" : sureGoster(i.ortalamaDonus),
            i.ortalamaDonus === null ? "muayene saati olan kayıt yok"
              : `ortanca ${sureGoster(i.ortancaDonus)} · ${sayi(i.donusOlculen)} kayıt`)}
   </div>`);
+
+  const istenen = new Set(secili && secili.length ? secili : VARSAYILAN_BOLUMLER);
+  const varMi = (id) => istenen.has(id);
+  const koy = (id, baslik, icerik, aciklama) => {
+    if (varMi(id)) bolumler.push(bolum(baslik, icerik, aciklama));
+  };
 
   // --- Hedef ve kapsam
   const oran = hedef?.oran ?? 1;
@@ -249,7 +298,7 @@ export function raporUret(ayKlasoru, kayitlar, oncekiKayitlar = null, hedef = nu
     ["say", "say", "say", "say", "say"]
   );
 
-  bolumler.push(bolum("Kapsam ve hedef",
+  koy("kapsam", "Kapsam ve hedef",
     hedefTablosu + `<div style="margin-top:14px">${tablo(
       ["Görüşme sonucu", "Adet", "Oran"],
       i.sonucDagilimi.map((s) => [
@@ -264,7 +313,7 @@ export function raporUret(ayKlasoru, kayitlar, oncekiKayitlar = null, hedef = nu
     "Hedef kişi üzerinden ölçülür: aynı hastayı birden çok kez aramak tek kişi " +
     "sayılır. Sonuç tablosundaki adetler ise arama sayısıdır — ulaşılamayan bir " +
     "hasta tekrar arandığında iki satır oluşur. Ulaşılamayan görüşmeler PDF'siz " +
-    "kayıt olarak tutulur; tekrar aranacaklar listesi bu kayıtlardan çıkar."));
+    "kayıt olarak tutulur; tekrar aranacaklar listesi bu kayıtlardan çıkar.");
 
   // --- Soru bazlı
   const soruSatirlari = i.sorular.map((s) => {
@@ -280,7 +329,7 @@ export function raporUret(ayKlasoru, kayitlar, oncekiKayitlar = null, hedef = nu
     ];
   });
 
-  bolumler.push(bolum("Soru bazlı sonuçlar",
+  koy("sorular", "Soru bazlı sonuçlar",
     tablo(
       ["No", "Soru", "1-5 dağılımı", "Puanlanan", "Kapsam dışı", "Ortalama", "4-5 oranı"],
       soruSatirlari,
@@ -293,26 +342,126 @@ export function raporUret(ayKlasoru, kayitlar, oncekiKayitlar = null, hedef = nu
     '"Puanlanan" sütununda görünür. 4. sorunun "Bilgi istemedim", 6. sorunun ' +
     '"Farkında değildim" seçenekleri ile tetkik yaptırmamış hastaların 7. soru ' +
     "cevapsızlığı memnuniyet ölçmediği için ortalamaya katılmaz; dağılım " +
-    "çubuğunda ise işaretlendiği gibi görünür."));
+    "çubuğunda ise işaretlendiği gibi görünür.");
 
   // --- Kırılımlar
-  bolumler.push(bolum("Poliklinik ve hekim kırılımı", `<div class="ikili">
+  koy("kirilim", "Poliklinik ve hekim kırılımı", `<div class="ikili">
     <div><h3>Poliklinik</h3>${kirilimTablosu("Poliklinik", i.kirilimlar.poliklinik)}</div>
     <div><h3>Hekim</h3>${kirilimTablosu("Hekim", i.kirilimlar.hekim)}</div>
   </div>`, "Anket sayısı düşük birimlerde ortalama tek bir cevaptan etkilenebilir; " +
-           "kırılımlar anket sayısıyla birlikte okunmalıdır."));
+           "kırılımlar anket sayısıyla birlikte okunmalıdır.");
 
-  bolumler.push(bolum("Katılımcı profili", `<div class="ikili">
+  koy("profil", "Katılımcı profili", `<div class="ikili">
     <div><h3>Katılımcı türü</h3>${kirilimTablosu("Tür", i.kirilimlar.katilimciTuru)}</div>
     <div><h3>Cinsiyet</h3>${kirilimTablosu("Cinsiyet", i.kirilimlar.cinsiyet)}</div>
   </div><div class="ikili" style="margin-top:14px">
     <div><h3>Yaş grubu</h3>${kirilimTablosu("Yaş grubu", i.kirilimlar.yasGrubu)}</div>
     <div><h3>Eğitim durumu</h3>${kirilimTablosu("Eğitim", i.kirilimlar.egitim)}</div>
   </div>`, "Cinsiyet, yaş ve eğitim ankete katılanın beyanıdır. Telefonu hasta " +
-           "yakını açtığında bu bilgiler hasta kaydından değil, görüşülen kişiden alınır."));
+           "yakını açtığında bu bilgiler hasta kaydından değil, görüşülen kişiden alınır.");
+
+
+  // --- Poliklinik x soru matrisi
+  koy("matris", "Poliklinik × soru matrisi", tablo(
+    ["Poliklinik", "Anket", ...i.sorular.map((x) => `S${x.no}`)],
+    i.poliklinikSoruMatrisi.map((p) => [
+      kacis(p.etiket) + azIsareti(p),
+      sayi(p.adet),
+      ...p.sorular.map((x) => x.ortalama === null ? "—" : sayi(x.ortalama, 2))
+    ]),
+    ["", "say", ...i.sorular.map(() => "say")]
+  ) + (i.poliklinikSoruMatrisi.some((p) => p.az)
+      ? `<p class="dipnot">* ${EN_AZ_ANKET} anketten az.</p>` : ""),
+  "Aynı sorunun her birimde nasıl gittiğini gösterir. Düşük bir başlık tüm " +
+  "kurumda mı yoksa tek bir birimde mi sorun, DÖF'ü buna göre açmak gerekir. " +
+  "Sütun başlıkları soru numaralarıdır.");
+
+  // --- Saat ve gün analizi
+  koy("saat", "Saat ve gün analizi", `<div class="ikili">
+    <div><h3>Saat dilimi</h3>${tablo(
+      ["Saat", "Arama", "Ulaşılan", "Ulaşma oranı"],
+      i.saatDilimleri.map((d) => [
+        kacis(d.etiket), sayi(d.arama), sayi(d.ulasilan), yuzde(d.oran)
+      ]),
+      ["", "say", "say", "say"]
+    )}</div>
+    <div><h3>Haftanın günü</h3>${tablo(
+      ["Gün", "Arama", "Ulaşılan", "Ulaşma oranı"],
+      i.gunler.map((g) => [
+        kacis(g.etiket), sayi(g.arama), sayi(g.ulasilan), yuzde(g.oran)
+      ]),
+      ["", "say", "say", "say"]
+    )}</div>
+  </div>`,
+  "Hangi saatte ve hangi gün arandığında telefonun açıldığını gösterir. " +
+  "Aramaları yoğun dilime kaydırmak, ulaşma oranını yükseltmenin en ucuz yolu.");
+
+  // --- Tekrar aramanın getirisi
+  koy("tekrar", "Tekrar aramanın getirisi", tablo(
+    ["Deneme", "Bu denemede ulaşılan", "Toplam ulaşılan", "Birikimli ulaşma oranı"],
+    i.tekrarArama.map((t) => [
+      `${sayi(t.deneme)}. arama`, sayi(t.buAdimda), sayi(t.biriken), yuzde(t.birikenOran)
+    ]),
+    ["", "say", "say", "say"]
+  ),
+  `${sayi(i.denemeSayisi)} kişi arandı. Tablo, kaçıncı denemede ulaşıldığını ve ` +
+  "her denemeden sonra ulaşma oranının nereye çıktığını gösterir — tekrar " +
+  "aramaya devam etmenin ne kazandırdığı buradan okunur.");
+
+  // --- Ay içinde dağılım
+  {
+    const enCok = i.ayIciDagilim.reduce((m, g) => Math.max(m, g.adet), 0) || 1;
+    const cubuklar = i.ayIciDagilim
+      .map((g) => `<i style="height:${Math.round((g.adet / enCok) * 100)}%" ` +
+                  `title="${g.gun}. gün: ${g.adet} anket"></i>`).join("");
+    const etiketler = i.ayIciDagilim.map((g) => `<span>${g.gun}</span>`).join("");
+    koy("dagilim", "Ay içinde anketlerin dağılımı",
+      i.ayIciDagilim.length
+        ? `<div class="cubuk">${cubuklar}</div><div class="cubuk-etiket">${etiketler}</div>`
+        : '<p class="aciklama">Bu dönemde kayıt yok.</p>',
+      "Anketlerin aya yayılıp yayılmadığını gösterir. Tamamı son birkaç güne " +
+      "yığılmışsa örneklem o günlerin hastalarını temsil eder, ayın tamamını değil.");
+  }
+
+  // --- Dönüş süresi ve memnuniyet
+  koy("donus", "Dönüş süresi ve memnuniyet", tablo(
+    ["Muayeneden aramaya geçen süre", "Anket", "Ortalama puan"],
+    i.donusMemnuniyet.map((d) => [
+      kacis(d.etiket) + azIsareti(d),
+      sayi(d.adet),
+      d.ortalama === null ? "—" : sayi(d.ortalama, 2)
+    ]),
+    ["", "say", "say"]
+  ) + (i.donusMemnuniyet.some((d) => d.az)
+      ? `<p class="dipnot">* ${EN_AZ_ANKET} anketten az.</p>` : ""),
+  "Geç aranan hastanın puanı farklı mı? Fark çıkarsa iki okuma da mümkündür: " +
+  "hasta ayrıntıyı unutmuş olabilir ya da geç dönülmesi memnuniyetsizlik " +
+  "yaratmış olabilir. Tablo soruyu açar, tek başına cevaplamaz.");
+
+  // --- Numara hatalı çıkanlar
+  koy("numaraHatali", "Numara hatalı çıkanlar — birim kırılımı", tablo(
+    ["Poliklinik", "Hatalı numara"],
+    i.numaraHatali.map((n) => [kacis(n.etiket), sayi(n.adet)]),
+    ["", "say"]
+  ),
+  "Telefonu yanlış kaydedilen hastaların hangi birimden geldiğini gösterir. " +
+  "Hasta kayıt sürecine geri bildirim için kullanılır; anket kalitesinden çok " +
+  "kayıt kalitesiyle ilgilidir.");
+
+  // --- Anketi uygulayan
+  koy("uygulayan", "Anketi uygulayan kırılımı", tablo(
+    ["Anketi uygulayan", "Arama", "Ulaşılan", "Ulaşma oranı"],
+    i.uygulayanlar.map((u) => [
+      kacis(u.etiket), sayi(u.arama), sayi(u.ulasilan), yuzde(u.oran)
+    ]),
+    ["", "say", "say", "say"]
+  ),
+  "İş yükü dağılımını gösterir. Memnuniyet ortalamaları bilerek konmadı: " +
+  "kişi başına puan ortalaması personel değerlendirmesine dönüşmeye açıktır " +
+  "ve bu sayılar onu taşıyacak büyüklükte değildir.");
 
   // --- DÖF
-  bolumler.push(bolum("DÖF — 2 ve altı puan verilen cevaplar", tablo(
+  koy("dof", "DÖF — 2 ve altı puan verilen cevaplar", tablo(
     ["Tarih", "Hasta", "Poliklinik", "Hekim", "Soru", "Puan", "Verilen cevap", "Hasta görüşü"],
     i.dof.map((d) => [
       kacis(d.tarih), kacis(d.adSoyad), kacis(d.poliklinik), kacis(d.hekim),
@@ -321,22 +470,22 @@ export function raporUret(ayKlasoru, kayitlar, oncekiKayitlar = null, hedef = nu
     ["", "", "", "", "say", "say", "", ""]
   ), i.dof.length
     ? `Toplam ${sayi(i.dof.length)} cevapta 2 ve altı puan verilmiştir.`
-    : "Bu dönemde 2 ve altı puan verilen cevap bulunmamaktadır."));
+    : "Bu dönemde 2 ve altı puan verilen cevap bulunmamaktadır.");
 
   // --- Görüşler ve tekrar aranacaklar
-  bolumler.push(bolum("Hastaların serbest görüşleri", tablo(
+  koy("gorusler", "Hastaların serbest görüşleri", tablo(
     ["Tarih", "Hasta", "Poliklinik", "Görüş"],
     i.gorusler.map((g) => [kacis(g.tarih), kacis(g.adSoyad), kacis(g.poliklinik), kacis(g.gorus)])
   ), "Anket formunda serbest görüş alanı bulunmadığı için hastanın söyledikleri " +
-     "PDF'e değil veri kaydına alınır ve burada listelenir."));
+     "PDF'e değil veri kaydına alınır ve burada listelenir.");
 
-  bolumler.push(bolum("Tekrar aranacaklar", tablo(
+  koy("tekrarAranacak", "Tekrar aranacaklar", tablo(
     ["Tarih", "Hasta", "Telefon", "Poliklinik", "Görüşme sonucu"],
     i.tekrarAranacaklar.map((t) => [
       kacis(t.tarih), kacis(t.adSoyad), kacis(t.telefon), kacis(t.poliklinik), kacis(t.sonuc)
     ])
   ), "Telefonu açmayan hastalar. Numarası hatalı olanlar ve görüşmeyi istemeyenler " +
-     "bu listeye alınmaz."));
+     "bu listeye alınmaz.");
 
   const oncekiNot = onceki
     ? `Karşılaştırma dönemi: ${kacis(donemEtiketi(oncekiAyKlasoru(ayKlasoru)))} ` +

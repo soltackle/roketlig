@@ -50,6 +50,8 @@ Dosyalar şu yapıya yazılır:
 
 ```
 HHD.FR.19 Anketleri/
+  _ayarlar/
+    hekimler.json
   2026-09 Eylul/
     AHMET YILMAZ - 11.09.2026 14.32.pdf
     _veri/
@@ -78,6 +80,24 @@ doğrudan getir"** tiki açılırsa eklenti tek bir okuma isteğiyle kendisi get
 ve hastayı açmaya gerek kalmaz. Çalışmazsa kendiliğinden eski yönteme döner ve
 sebebini söyler; denemesi risksizdir.
 
+**Hekim – poliklinik eşlemesi.** HBYS'de birim bilgisi dağınık: hasta listesi
+ızgarasında birim sütunu yok, poliklinik adı filtreden tahmin ediliyor. Ayarlar
+sekmesinde hangi hekimin hangi poliklinikte çalıştığı elle giriliyor; anket
+yapılan hekimler listeye kendiliğinden düşüyor. Eşleme ana klasördeki
+`_ayarlar/hekimler.json` dosyasına yazılıyor, ikinci bilgisayar da aynı listeyi
+görüyor. Eşleme girildiği anda hem yeni anketlerin polikliniği doğru geliyor
+hem eski kayıtlar rapor ve liste üretilirken düzeltiliyor.
+
+**Rapor bölümleri.** Raporda hangi bölümlerin görüneceği Ayarlar'dan tikle
+seçiliyor. Hazır bölümler: kapsam ve hedef, soru bazlı sonuçlar, poliklinik ve
+hekim kırılımı, poliklinik × soru matrisi, katılımcı profili, saat ve gün
+analizi, tekrar aramanın getirisi, ay içinde dağılım, dönüş süresi ve
+memnuniyet, numara hatalı çıkanlar, anketi uygulayan kırılımı, DÖF, hasta
+görüşleri, tekrar aranacaklar.
+
+Kırılım tablolarında beş anketten az olan satırlar yıldızla işaretleniyor —
+ayda ~40 ankette hücreler hızla inceliyor ve tek bir cevap ortalamayı uçurabiliyor.
+
 **Aylık hedef.** Rapor sekmesine o ay kuruma gelen hasta sayısı elle girilir;
 eklenti bunun yüzdesini (varsayılan %1, Ayarlar'dan değiştirilir) hedef sayar.
 Üst çubuktaki rozet "Bu ay: 38/42 kişi" diye ilerlemeyi gösterir. Hedef kişi
@@ -101,7 +121,7 @@ eklenti/          yüklenecek eklenti
   kopru.js        sayfa ile panel arasındaki röle (ISOLATED)
   arkaplan.js     servis işçisi
   panel/          yan panel arayüzü
-  motor/          sorular, zaman, PDF işaretleme, kayıt, istatistik, rapor, liste
+  motor/          sorular, zaman, hekimler, PDF, kayıt, istatistik, rapor, liste
   varliklar/      boş form, yazı tipi, gömülü kütüphaneler
 araclar/          paketleme betiği
 test/             Node ve Chromium sınamaları

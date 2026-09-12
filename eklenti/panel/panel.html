@@ -179,6 +179,33 @@
   </fieldset>
 
   <fieldset>
+    <legend>Raporda görünecek bölümler</legend>
+    <div id="bolumSecim"></div>
+    <p class="not">Seçim yalnızca raporu etkiler; veriler her zaman kaydedilir.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Hekim – poliklinik eşlemesi</legend>
+    <p class="not">
+      HBYS'de birim bilgisi dağınık olduğu için poliklinik buradan çözülüyor.
+      Anket yapılan hekimler listeye kendiliğinden düşer; karşılarına
+      polikliniği yazmanız yeterli. Eşleme ana klasöre yazılır, diğer
+      bilgisayar da aynı listeyi görür.
+    </p>
+    <div id="hekimListesi"></div>
+    <div class="satir">
+      <input id="alanYeniHekim" type="text" placeholder="Hekim adı" autocomplete="off">
+      <button id="btnHekimEkle" class="ikincil dar" type="button" title="Ekle">+</button>
+    </div>
+    <div class="satir">
+      <button id="btnHekimKaydet" class="birincil" type="button">Eşlemeyi kaydet</button>
+      <button id="btnHekimTara" class="ikincil dar" type="button"
+              title="Kayıtlardaki hekimleri tara">↻</button>
+    </div>
+    <p id="hekimDurum" class="not"></p>
+  </fieldset>
+
+  <fieldset>
     <legend>Yapılan işlemler</legend>
     <label class="satir-ici">
       <input id="cbDogrudanIslem" type="checkbox">

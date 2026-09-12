@@ -9,7 +9,10 @@ import {
 } from "../motor/sorular.js";
 import { anketiIsaretle } from "../motor/pdf.js";
 import * as kayitDeposu from "../motor/kayit.js";
-import { raporUret, oncekiAyKlasoru, donemEtiketi } from "../motor/rapor.js";
+import { raporUret, oncekiAyKlasoru, donemEtiketi,
+         BOLUMLER, VARSAYILAN_BOLUMLER } from "../motor/rapor.js";
+import { eslemeOku, eslemeYaz, hekimAnahtari, kayitlariEsle,
+         eksikHekimler, poliklinikAdlari } from "../motor/hekimler.js";
 import { listeHtml, listeCsv } from "../motor/liste.js";
 import { tarihGoster, zamanGoster } from "../motor/zaman.js";
 
@@ -35,6 +38,8 @@ let uygulayan = "";
 let onizlemeUrl = null;
 let hedefOran = 1;                 // aylık hasta sayısının aranacak yüzdesi
 let dogrudanIslem = false;         // işlemleri HBYS'ye sorarak getir (varsayılan kapalı)
+let raporBolumleri = [...VARSAYILAN_BOLUMLER];
+let hekimEslemesi = {};            // HEKİM ADI (büyük harf) -> poliklinik
 
 // ── Yardımcılar ────────────────────────────────────────────
 
@@ -227,6 +232,12 @@ function ciz() {
   $("btnOnayla").disabled = !taslak.gorusmeSonucu || !taslak.hasta.adSoyad;
 }
 
+/** Poliklinik: önce elle girilen hekim eşlemesi, sonra HBYS'nin birim tahmini. */
+function poliklinikCoz(hasta) {
+  const anahtar = hekimAnahtari(hasta?.hekim);
+  return (anahtar && hekimEslemesi[anahtar]) || hasta?.poliklinik || null;
+}
+
 function hbysOnerileriniUygula() {
   if (!hbysHastasi || taslak.katilimci.tur === "Hasta yakını") return;
   if (!taslak.katilimci.cinsiyet && hbysHastasi.cinsiyet) {
@@ -261,11 +272,12 @@ async function hastayiAl(hasta, kaynak = "hbys") {
     adSoyad: hasta.adSoyad ?? "",
     tcKimlikNo: hasta.tcKimlikNo ? String(hasta.tcKimlikNo).trim() : "",
     telefon: hasta.telefon ?? "",
-    poliklinik: hasta.poliklinik ?? "",
+    poliklinik: poliklinikCoz(hasta) ?? "",
     hekim: hasta.hekim ?? "",
     islemTarihi: hasta.islemTarihi ?? null,
     muayeneZamani: hasta.muayeneZamani ?? hasta.islemTarihi ?? null,
-    poliklinikOneri: Boolean(hasta.poliklinik)
+    poliklinikOneri: Boolean(hasta.poliklinik) &&
+                     !hekimEslemesi[hekimAnahtari(hasta.hekim)]
   };
   $("alanAd").value = taslak.hasta.adSoyad;
   $("alanTc").value = taslak.hasta.tcKimlikNo;
@@ -477,6 +489,127 @@ async function klasorSecdir() {
   }
 }
 
+// ── Rapor bölümleri ────────────────────────────────────────
+
+function bolumleriCiz() {
+  $("bolumSecim").replaceChildren(...BOLUMLER.map((b) => {
+    const etiket = document.createElement("label");
+    const kutu = document.createElement("input");
+    kutu.type = "checkbox";
+    kutu.checked = raporBolumleri.includes(b.id);
+    kutu.addEventListener("change", async () => {
+      raporBolumleri = kutu.checked
+        ? [...new Set([...raporBolumleri, b.id])]
+        : raporBolumleri.filter((x) => x !== b.id);
+      await chrome.storage.local.set({ raporBolumleri });
+    });
+    etiket.append(kutu, document.createTextNode(b.ad));
+    return etiket;
+  }));
+}
+
+// ── Hekim – poliklinik eşlemesi ────────────────────────────
+
+/* Poliklinik HBYS'de güvenilir gelmiyor: hasta listesi ızgarasında birim
+ * sütunu yok, ad filtredeki birim seçiminden tahmin ediliyor. Eşleme elle
+ * girilince hem panel doğru polikliniği yazıyor hem eski kayıtlar rapor
+ * üretilirken düzeltiliyor. */
+
+function hekimleriCiz(eksikler = []) {
+  const kap = $("hekimListesi");
+  const oneriler = poliklinikAdlari(hekimEslemesi);
+  const listeId = "poliklinikOnerileri";
+
+  const adlar = new Map();
+  for (const anahtar of Object.keys(hekimEslemesi)) adlar.set(anahtar, anahtar);
+  for (const e of eksikler) adlar.set(hekimAnahtari(e.ad), e.ad);
+
+  const satirlar = [...adlar.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], "tr"))
+    .map(([anahtar, gosterim]) => {
+      const satir = document.createElement("div");
+      satir.className = "hekim-satir";
+
+      const ad = document.createElement("span");
+      ad.className = `ad${hekimEslemesi[anahtar] ? "" : " eksik"}`;
+      ad.textContent = gosterim;
+      ad.title = gosterim;
+
+      const kutu = document.createElement("input");
+      kutu.type = "text";
+      kutu.placeholder = "Poliklinik";
+      kutu.value = hekimEslemesi[anahtar] ?? "";
+      kutu.setAttribute("list", listeId);
+      kutu.addEventListener("input", () => {
+        const deger = kutu.value.trim();
+        if (deger) hekimEslemesi[anahtar] = deger;
+        else delete hekimEslemesi[anahtar];
+        ad.className = `ad${deger ? "" : " eksik"}`;
+      });
+
+      const sil = document.createElement("button");
+      sil.type = "button";
+      sil.className = "sil";
+      sil.title = "Listeden çıkar";
+      sil.textContent = "×";
+      sil.addEventListener("click", () => {
+        delete hekimEslemesi[anahtar];
+        hekimleriCiz(eksikler.filter((e) => hekimAnahtari(e.ad) !== anahtar));
+      });
+
+      satir.append(ad, kutu, sil);
+      return satir;
+    });
+
+  const oneriListesi = document.createElement("datalist");
+  oneriListesi.id = listeId;
+  for (const ad of oneriler) {
+    const o = document.createElement("option");
+    o.value = ad;
+    oneriListesi.append(o);
+  }
+
+  if (!satirlar.length) {
+    const bos = document.createElement("p");
+    bos.className = "not";
+    bos.textContent = "Henüz hekim yok. Anket yaptıkça liste kendiliğinden dolar.";
+    kap.replaceChildren(bos, oneriListesi);
+    return;
+  }
+  kap.replaceChildren(...satirlar, oneriListesi);
+}
+
+/** Kayıtlardaki ve o an seçili hastadaki hekimleri listeye katar. */
+async function hekimleriTara() {
+  const durum = $("hekimDurum");
+  durum.textContent = "Kayıtlar taranıyor…";
+  const bulunan = [];
+  try {
+    for (const ay of (await kayitDeposu.aylariListele()).slice(0, 12)) {
+      const { kayitlar } = await kayitDeposu.ayKayitlariniOku(ay);
+      bulunan.push(...kayitlar);
+    }
+  } catch { /* klasör yoksa yalnızca ekrandaki hekim eklenir */ }
+
+  if (hbysHastasi?.hekim) {
+    bulunan.push({ hasta: { hekim: hbysHastasi.hekim } });
+  }
+  const eksikler = eksikHekimler(bulunan, hekimEslemesi);
+  hekimleriCiz(eksikler);
+  durum.textContent = eksikler.length
+    ? `${eksikler.length} hekimin polikliniği girilmemiş.`
+    : "Bütün hekimler eşlenmiş.";
+}
+
+async function hekimleriKaydet() {
+  const durum = $("hekimDurum");
+  const sonuc = await eslemeYaz(hekimEslemesi);
+  durum.textContent = sonuc.klasoreYazildi
+    ? "Eşleme ana klasöre kaydedildi; diğer bilgisayarlar da görecek."
+    : "Eşleme bu tarayıcıya kaydedildi. Ana klasöre yazılamadı — klasör seçili " +
+      "değilse ya da erişilemiyorsa böyle olur.";
+}
+
 // ── Ay hedefi ──────────────────────────────────────────────
 
 const hedefAnahtari = (ay) => `hedef:${String(ay).slice(0, 7)}`;
@@ -634,16 +767,22 @@ async function raporCikar() {
   const durum = $("raporDurum");
   durum.textContent = "Veri dosyaları okunuyor…";
   try {
-    const { kayitlar, bozuk, eksik } = await kayitDeposu.ayKayitlariniOku(ay);
+    const ham = await kayitDeposu.ayKayitlariniOku(ay);
+    const { bozuk, eksik } = ham;
+    const kayitlar = kayitlariEsle(ham.kayitlar, hekimEslemesi);
     let onceki = null;
     const oncekiAd = oncekiAyKlasoru(ay);
     if (oncekiAd) {
-      try { onceki = (await kayitDeposu.ayKayitlariniOku(oncekiAd)).kayitlar; } catch { onceki = null; }
+      try {
+        onceki = kayitlariEsle(
+          (await kayitDeposu.ayKayitlariniOku(oncekiAd)).kayitlar, hekimEslemesi);
+      } catch { onceki = null; }
     }
 
     const gelenHasta = await gelenHastaOku(ay);
     const html = raporUret(ay, kayitlar, onceki,
-                           gelenHasta ? { gelenHasta, oran: hedefOran } : null);
+                           gelenHasta ? { gelenHasta, oran: hedefOran } : null,
+                           raporBolumleri);
     const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
     await chrome.tabs.create({ url });
 
@@ -775,7 +914,7 @@ async function ayinKayitlari(durumEl) {
   durumEl.textContent = "Veri dosyaları okunuyor…";
   try {
     const { kayitlar, bozuk, eksik } = await kayitDeposu.ayKayitlariniOku(ay);
-    return { ay, kayitlar, bozuk, eksik };
+    return { ay, kayitlar: kayitlariEsle(kayitlar, hekimEslemesi), bozuk, eksik };
   } catch (e) {
     durumEl.textContent = `Okunamadı: ${e.message ?? e}`;
     return null;
@@ -912,6 +1051,20 @@ function baglaniklariKur() {
     await ayRozetiniTazele();
   });
 
+  $("btnHekimKaydet").addEventListener("click", hekimleriKaydet);
+  $("btnHekimTara").addEventListener("click", hekimleriTara);
+  $("btnHekimEkle").addEventListener("click", () => {
+    const ad = $("alanYeniHekim").value.trim();
+    if (!ad) return;
+    const anahtar = hekimAnahtari(ad);
+    if (!(anahtar in hekimEslemesi)) hekimEslemesi[anahtar] = "";
+    $("alanYeniHekim").value = "";
+    hekimleriCiz();
+  });
+  $("alanYeniHekim").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); $("btnHekimEkle").click(); }
+  });
+
   $("cbDogrudanIslem").addEventListener("change", async () => {
     dogrudanIslem = $("cbDogrudanIslem").checked;
     await chrome.storage.local.set({ dogrudanIslem });
@@ -923,6 +1076,12 @@ function baglaniklariKur() {
     $("alanHedefOran").value = hedefOran;
   dogrudanIslem = Boolean(ayarlar.dogrudanIslem);
   $("cbDogrudanIslem").checked = dogrudanIslem;
+  raporBolumleri = Array.isArray(ayarlar.raporBolumleri)
+    ? ayarlar.raporBolumleri : [...VARSAYILAN_BOLUMLER];
+  bolumleriCiz();
+
+  hekimEslemesi = (await eslemeOku()).eslesme;
+  hekimleriCiz();
     await chrome.storage.local.set({ hedefOran });
     await hedefKutusunuTazele();
     await ayRozetiniTazele();
@@ -942,7 +1101,7 @@ async function baslat() {
   baglaniklariKur();
 
   const ayarlar = await chrome.storage.local.get(
-    ["uygulayan", "hedefOran", "dogrudanIslem"]);
+    ["uygulayan", "hedefOran", "dogrudanIslem", "raporBolumleri"]);
   uygulayan = ayarlar.uygulayan ?? "";
   $("alanUygulayan").value = uygulayan;
   hedefOran = Number.isFinite(ayarlar.hedefOran) && ayarlar.hedefOran > 0
@@ -950,6 +1109,12 @@ async function baslat() {
   $("alanHedefOran").value = hedefOran;
   dogrudanIslem = Boolean(ayarlar.dogrudanIslem);
   $("cbDogrudanIslem").checked = dogrudanIslem;
+  raporBolumleri = Array.isArray(ayarlar.raporBolumleri)
+    ? ayarlar.raporBolumleri : [...VARSAYILAN_BOLUMLER];
+  bolumleriCiz();
+
+  hekimEslemesi = (await eslemeOku()).eslesme;
+  hekimleriCiz();
 
   ciz();
   await durumuTazele();

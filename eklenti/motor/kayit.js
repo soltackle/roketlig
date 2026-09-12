@@ -297,6 +297,41 @@ export async function ayKayitlariniOku(ayEtiketi) {
   return { kayitlar, bozuk, eksik };
 }
 
+export const AYAR_KLASORU = "_ayarlar";
+
+/**
+ * Ana klasördeki ortak ayar dosyaları.
+ *
+ * Hekim–poliklinik eşlemesi gibi şeyler buraya yazılıyor, chrome.storage'a
+ * değil: iki ayrı bilgisayardan anket yapıldığında ikisi de aynı eşlemeyi
+ * görsün ve rapor klasörden tek başına üretilebilsin diye.
+ */
+export async function ayarOku(ad) {
+  const tanitici = await anaKlasor();
+  if (!tanitici) return null;
+  try {
+    const ana = await tanitici.getDirectoryHandle(ANA_KLASOR, { create: false });
+    const klasor = await ana.getDirectoryHandle(AYAR_KLASORU, { create: false });
+    const dosya = await klasor.getFileHandle(ad, { create: false });
+    return JSON.parse(await (await dosya.getFile()).text());
+  } catch {
+    return null;                                // yok ya da okunamıyor
+  }
+}
+
+export async function ayarYaz(ad, nesne) {
+  const tanitici = await anaKlasor();
+  if (!tanitici) return false;
+  try {
+    const ana = await tanitici.getDirectoryHandle(ANA_KLASOR, { create: true });
+    const klasor = await ana.getDirectoryHandle(AYAR_KLASORU, { create: true });
+    await dosyayaYaz(klasor, ad, JSON.stringify(nesne, null, 1));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Bir ayın özeti: kaç kişi arandı, kaçına ulaşıldı.
  *

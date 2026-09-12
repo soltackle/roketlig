@@ -100,8 +100,30 @@ try {
   console.log("✓ hedef kutusu ve işlemler düğmesi yerinde");
   await sayfa.locator('.sekme[data-sekme="anket"]').click();
 
-  // Doğrudan sorgu ayarı: varsayılan kapalı, açılınca kalıcı olmalı
+  // Rapor bölümleri ve hekim eşlemesi
   await sayfa.locator('.sekme[data-sekme="ayarlar"]').click();
+  const bolumSayisi = await sayfa.locator("#bolumSecim label").count();
+  assert.ok(bolumSayisi >= 12, `bölüm tikleri listelenmeli (bulunan: ${bolumSayisi})`);
+  const isaretli = await sayfa.locator("#bolumSecim input:checked").count();
+  assert.ok(isaretli > 0 && isaretli < bolumSayisi,
+    "varsayılanda bir kısmı işaretli olmalı");
+  console.log(`✓ ${bolumSayisi} rapor bölümü seçilebiliyor`);
+
+  await sayfa.locator("#alanYeniHekim").fill("Dt. Ayşe DEMİR");
+  await sayfa.locator("#btnHekimEkle").click();
+  await sayfa.waitForSelector(".hekim-satir");
+  assert.equal(await sayfa.locator(".hekim-satir").count(), 1);
+  assert.ok(await sayfa.locator(".hekim-satir .ad.eksik").count() === 1,
+    "polikliniği girilmemiş hekim işaretlenmeli");
+  await sayfa.locator(".hekim-satir input").fill("Ağız, Diş ve Çene Cerrahisi");
+  assert.equal(await sayfa.locator(".hekim-satir .ad.eksik").count(), 0,
+    "poliklinik girilince işaret kalkmalı");
+  await sayfa.locator("#btnHekimKaydet").click();
+  await sayfa.waitForFunction(() =>
+    document.getElementById("hekimDurum").textContent.trim().length > 0);
+  console.log("✓ hekim eşlemesi girilip kaydedilebiliyor");
+
+  // Doğrudan sorgu ayarı: varsayılan kapalı, açılınca kalıcı olmalı
   const kutu = sayfa.locator("#cbDogrudanIslem");
   assert.ok(await kutu.isVisible(), "doğrudan sorgu tiki Ayarlar'da olmalı");
   assert.equal(await kutu.isChecked(), false, "varsayılan kapalı olmalı");

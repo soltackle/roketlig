@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 
 const kok = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "eklenti");
 const { hesapla } = await import(path.join(kok, "motor/istatistik.js"));
-const { raporUret } = await import(path.join(kok, "motor/rapor.js"));
+const { raporUret, BOLUMLER, VARSAYILAN_BOLUMLER } =
+  await import(path.join(kok, "motor/rapor.js"));
 
 const FORM = "HHD.FR.19 Rev.01";
 
@@ -177,6 +178,95 @@ function anket(n, ek = {}) {
   assert.ok(!/class="fark[^"]*">[^<]*—/.test(hedefsiz),
     "önceki ay yokken fark göstergesi boş kalmalı");
   console.log("✓ hedef bölümü ve eksik hedef uyarısı doğru");
+}
+
+// --- bölüm seçimi ---------------------------------------------------------
+{
+  const kayitlar = Array.from({ length: 14 }, (_, n) => anket(n + 1, n % 6 === 0
+    ? { gorusmeSonucu: "numara_hatali", cevaplar: {} } : {}));
+
+  const hepsi = raporUret("2026-09 Eylul", kayitlar, null, null,
+                          BOLUMLER.map((b) => b.id));
+  for (const b of BOLUMLER) {
+    assert.ok(hepsi.includes(b.ad), `"${b.ad}" bölümü üretilmeli`);
+  }
+  console.log(`✓ ${BOLUMLER.length} bölümün hepsi üretilebiliyor`);
+
+  const azi = raporUret("2026-09 Eylul", kayitlar, null, null, ["sorular", "dof"]);
+  assert.ok(azi.includes("Soru bazlı sonuçlar"));
+  assert.ok(azi.includes("DÖF"));
+  assert.ok(!azi.includes("Katılımcı profili"), "seçilmeyen bölüm çıkmamalı");
+  assert.ok(!azi.includes("Saat ve gün analizi"), "seçilmeyen bölüm çıkmamalı");
+  console.log("✓ yalnızca seçilen bölümler raporda");
+
+  const bos = raporUret("2026-09 Eylul", kayitlar, null, null, []);
+  assert.ok(bos.includes("Kapsam ve hedef"),
+    "hiç seçim yoksa varsayılan bölümler gelmeli");
+  assert.ok(!bos.includes("Poliklinik × soru matrisi"));
+  console.log("✓ seçim boşsa varsayılana düşüyor");
+
+  // Az anketli satır uyarısı
+  const tekAnket = raporUret("2026-09 Eylul", [anket(1)], null, null, ["kirilim"]);
+  assert.ok(tekAnket.includes("anketten az"), "az örneklemli satır uyarılmalı");
+  console.log("✓ az anketli kırılım satırı işaretleniyor");
+}
+
+// --- yeni ölçüler ---------------------------------------------------------
+{
+  const saatli = (n, saat, sonuc) => anket(n, {
+    anketId: `s${n}`, saat, gorusmeSonucu: sonuc,
+    zamanDamgasi: `2026-09-11T${saat}:00`,
+    hasta: { ...anket(n).hasta, hastaId: 8000 + n },
+    cevaplar: sonuc === "ulasildi" ? anket(1).cevaplar : {}
+  });
+  const i = hesapla([
+    saatli(1, "09:10", "acmadi"), saatli(2, "09:40", "acmadi"),
+    saatli(3, "15:10", "ulasildi"), saatli(4, "15:40", "ulasildi")
+  ]);
+  const sabah = i.saatDilimleri.find((d) => d.etiket === "08:00–10:00");
+  const oglen = i.saatDilimleri.find((d) => d.etiket === "14:00–16:00");
+  assert.equal(sabah.arama, 2);
+  assert.equal(sabah.oran, 0, "sabah hiç ulaşılmamış");
+  assert.equal(oglen.oran, 1, "öğleden sonra hepsine ulaşılmış");
+  assert.equal(i.netMemnuniyet !== null, true);
+  console.log("✓ saat dilimi ve net memnuniyet hesaplanıyor");
+}
+
+// --- hekim – poliklinik eşlemesi ------------------------------------------
+{
+  const { kayitlariEsle, poliklinikBul, eksikHekimler, hekimAnahtari } =
+    await import(path.join(kok, "motor/hekimler.js"));
+
+  const esleme = { [hekimAnahtari("Dt. Ayşe DEMİR")]: "Ortodonti" };
+
+  assert.equal(poliklinikBul(esleme, "dt. ayşe  demir"), "Ortodonti",
+    "ad yazımı farklı olsa da eşleşmeli");
+  assert.equal(poliklinikBul(esleme, "Dt. Bilinmeyen"), null);
+
+  const kayitlar = [
+    anket(1, { hasta: { ...anket(1).hasta, hekim: "Dt. Ayşe DEMİR",
+                        poliklinik: "Yanlış Birim" } }),
+    anket(2, { hasta: { ...anket(2).hasta, hekim: "Dt. Şükrü DOĞAN",
+                        poliklinik: "Restoratif Diş Tedavisi" } })
+  ];
+  const eslenmis = kayitlariEsle(kayitlar, esleme);
+  assert.equal(eslenmis[0].hasta.poliklinik, "Ortodonti",
+    "eşleme HBYS tahminini ezmeli");
+  assert.equal(eslenmis[0].hasta.poliklinikEslemeden, true);
+  assert.equal(eslenmis[1].hasta.poliklinik, "Restoratif Diş Tedavisi",
+    "eşleme yoksa kayıttaki değer korunmalı");
+  assert.equal(kayitlar[0].hasta.poliklinik, "Yanlış Birim",
+    "özgün kayıt değiştirilmemeli");
+
+  const eksik = eksikHekimler(kayitlar, esleme);
+  assert.equal(eksik.length, 1, "yalnızca eşlenmemiş hekim listelenmeli");
+  assert.equal(eksik[0].ad, "Dt. Şükrü DOĞAN");
+
+  // Eşleme raporda gerçekten kullanılıyor mu
+  const rapor = raporUret("2026-09 Eylul", eslenmis, null, null, ["kirilim"]);
+  assert.ok(rapor.includes("Ortodonti"), "eşlenen poliklinik raporda görünmeli");
+  assert.ok(!rapor.includes("Yanlış Birim"), "eski değer raporda kalmamalı");
+  console.log("✓ hekim eşlemesi polikliniği düzeltiyor");
 }
 
 console.log("\nTüm sınamalar geçti.");
