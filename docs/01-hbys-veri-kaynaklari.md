@@ -82,6 +82,22 @@ Sonuç: eklenti hasta bilgisini **hasta listesi kaydından** almalı; başlık
 yalnızca "şu an hangi hasta seçili" bilgisini doğrulamak için kullanılmalı.
 Akış zaten "İşlemi Bitenler" listesinden başladığı için bu bir kısıt değil.
 
+## Poliklinik neden elle giriliyor
+
+Hasta listesi ızgarasında birim sütunu yok; poliklinik adı yalnızca filtredeki
+birim seçiminden (`CmbHastaListesiBirimler`) tahmin edilebiliyor ve birim grubu
+ya da ortak havuz seçiliyken bu tahmin yanlış çıkıyor.
+
+Bu yüzden poliklinik, hekim üzerinden çözülüyor: hangi hekimin hangi
+poliklinikte çalıştığı Ayarlar'dan elle giriliyor. Anket yapılan her hekim
+listeye kendiliğinden ekleniyor — hasta seçildiği anda, poliklinik girilene
+kadar yalnızca o tarayıcıda tutuluyor, ağ klasörüne boş kayıt gitmiyor.
+
+Eşleme dönemli tutuluyor: hekim taşındığında yeni dönem açılıyor, bir anketin
+polikliniği o anketin muayene tarihindeki döneme bakılarak bulunuyor. Kullanıcı
+tarih girmiyor; "yazım düzeltmesi mi, taşınma mı" sorusuna verdiği cevaba göre
+eklenti tarihi kendisi koyuyor.
+
 ## Yapılan işlemler
 
 Anketçi hastayı aramadan önce ne yapıldığına bakıyor. Bu bilgi

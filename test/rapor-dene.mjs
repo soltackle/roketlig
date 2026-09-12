@@ -304,4 +304,41 @@ function anket(n, ek = {}) {
   console.log("✓ hekim poliklinik değiştirince eski anketler yerinde kalıyor");
 }
 
+// --- poliklinik güncelleme: düzeltme mi taşınma mı ------------------------
+{
+  const { poliklinigiGuncelle, poliklinikBul, hekimOzeti, hekimAnahtari } =
+    await import(path.join(kok, "motor/hekimler.js"));
+
+  const ad = "Dt. Ayşe DEMİR";
+  const anahtar = hekimAnahtari(ad);
+
+  // İlk giriş: geçmişin tamamına uygulanır
+  let esleme = poliklinigiGuncelle({}, ad, "Ortodont", { gecmiseUygula: true });
+  assert.equal(poliklinikBul(esleme, ad, "2020-01-01"), "Ortodont");
+
+  // Yazım düzeltmesi: eski anketler de düzelir
+  esleme = poliklinigiGuncelle(esleme, ad, "Ortodonti", { gecmiseUygula: true });
+  assert.equal(poliklinikBul(esleme, ad, "2020-01-01"), "Ortodonti",
+    "düzeltme geçmişe de uygulanmalı");
+  assert.equal(esleme[anahtar].length, 1, "düzeltme yeni dönem açmamalı");
+
+  // Taşınma: bugünden itibaren, eskisi yerinde kalır
+  esleme = poliklinigiGuncelle(esleme, ad, "Periodontoloji", { gecmiseUygula: false });
+  assert.equal(esleme[anahtar].length, 2, "taşınma yeni dönem açmalı");
+  assert.equal(poliklinikBul(esleme, ad, "2020-01-01"), "Ortodonti",
+    "taşınmadan önceki anket eski poliklinikte kalmalı");
+  assert.equal(hekimOzeti(esleme, ad).guncel, "Periodontoloji");
+  assert.equal(hekimOzeti(esleme, ad).gecmis.length, 1);
+
+  // Aynı gün ikinci taşınma yeni dönem yığmamalı
+  esleme = poliklinigiGuncelle(esleme, ad, "Endodonti", { gecmiseUygula: false });
+  assert.equal(esleme[anahtar].length, 2, "aynı gün üst üste dönem açılmamalı");
+  assert.equal(hekimOzeti(esleme, ad).guncel, "Endodonti");
+
+  // Boşaltmak eşlemeyi kaldırır
+  esleme = poliklinigiGuncelle(esleme, ad, "", { gecmiseUygula: true });
+  assert.equal(anahtar in esleme, false);
+  console.log("✓ düzeltme geçmişe uygulanıyor, taşınma yeni dönem açıyor");
+}
+
 console.log("\nTüm sınamalar geçti.");

@@ -254,10 +254,15 @@ input[type="number"]:focus {
 .hekim-kutu > .baslik .ad { flex: 1; min-width: 0; overflow: hidden;
                             text-overflow: ellipsis; white-space: nowrap; }
 .hekim-kutu > .baslik .ad.eksik { color: var(--uyari); }
-.donem-ekle {
-  background: none; border: none; color: var(--vurgu); font-size: 11px;
-  padding: 2px 4px; cursor: pointer; text-decoration: underline; flex: 0 0 auto;
+.hekim-kutu .gecmis { font-size: 10.5px; color: var(--soluk); margin: 4px 0 0; }
+.hekim-kutu .secim-sor {
+  margin-top: 5px; padding: 5px 6px; border-radius: 4px;
+  background: var(--uyari-zemin); border: 1px solid #e8d29a;
 }
+.hekim-kutu .secim-sor p { margin: 0 0 5px; font-size: 10.5px; color: var(--uyari); }
+.hekim-kutu .secim-sor .satir { margin: 0; }
+.hekim-kutu .secim-sor button { font-size: 11px; padding: 4px 8px; }
+.guncelle { flex: 0 0 auto; padding: 3px 9px; font-size: 11px; }
 .hekim-satir .sil {
   flex: 0 0 auto; border: none; background: none; color: var(--soluk);
   font-size: 13px; line-height: 1; padding: 2px 4px; cursor: pointer;

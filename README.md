@@ -93,10 +93,19 @@ yapılan hekimler listeye kendiliğinden düşüyor. Eşleme ana klasördeki
 görüyor. Eşleme girildiği anda hem yeni anketlerin polikliniği doğru geliyor
 hem eski kayıtlar rapor ve liste üretilirken düzeltiliyor.
 
-Hekimler poliklinik değiştirebildiği için eşleme **dönemlidir**: her hekime
-başlangıç tarihiyle yeni bir dönem eklenebilir. Bir anketin polikliniği,
-o anketin muayene tarihinde geçerli olan döneme bakılarak bulunur — hekim
-sonradan taşınsa bile eski anketler eski poliklinikte kalır.
+Kullanımı tek alan: polikliniği yazıp **Güncelle**. Daha önce girilmiş bir adı
+değiştiriyorsanız, bunun bir yazım düzeltmesi mi yoksa hekimin gerçekten
+taşınması mı olduğu sorulur:
+
+- **Yazım düzeltmesi** — eski anketler de yeni adla görünür
+- **Hekim taşındı** — bugünden itibaren geçerli olur, o tarihten önceki
+  anketler eski poliklinikte kalır
+
+Tarihi eklenti kendisi tutar; kutuya tarih yazmanız gerekmez. Geçmiş dönemler
+hekimin altında "Önce: Ortodonti (12.09.2026 öncesi)" diye görünür.
+
+Polikliniği girilmemiş hekim varsa Ayarlar uyarır; anket sırasında da hasta
+kartının altında "bu hekimin polikliniği tanımlı değil" notu çıkar.
 
 **Rapor bölümleri.** Raporda hangi bölümlerin görüneceği Ayarlar'dan tikle
 seçiliyor. Hazır bölümler: kapsam ve hedef, soru bazlı sonuçlar, poliklinik ve

@@ -122,6 +122,57 @@ export function kayitlariEsle(kayitlar, eslesme) {
   });
 }
 
+const bugun = () => tariheCevir(new Date());
+
+/**
+ * Bir hekimin polikliniğini günceller.
+ *
+ * İki ayrı durum var ve karıştırılırsa geçmiş bozulur:
+ *
+ * - **Düzeltme** (`gecmiseUygula: true`): yanlış ya da eksik girilmiş bir adı
+ *   düzeltiyoruz. Hekim hep orada çalışıyordu, bütün dönemler yeni adla
+ *   değiştirilir; eski anketler de düzelir.
+ * - **Taşınma** (`gecmiseUygula: false`): hekim gerçekten poliklinik
+ *   değiştirdi. Bugünden başlayan yeni bir dönem açılır, eski dönem yerinde
+ *   kalır; o tarihten önceki anketler eski poliklinikte kalır.
+ *
+ * @returns {object} yeni eşleme (özgün nesne değiştirilmez)
+ */
+export function poliklinigiGuncelle(eslesme, hekim, poliklinik, { gecmiseUygula }) {
+  const anahtar = hekimAnahtari(hekim);
+  if (!anahtar) return eslesme;
+
+  const ad = String(poliklinik ?? "").trim();
+  const yeni = { ...eslesme };
+
+  if (!ad) {                                    // boşaltmak = eşlemeyi kaldır
+    delete yeni[anahtar];
+    return yeni;
+  }
+
+  const oncekiler = eslesme?.[anahtar] ?? [];
+  if (gecmiseUygula || !oncekiler.length) {
+    yeni[anahtar] = [{ poliklinik: ad, baslangic: null }];
+    return yeni;
+  }
+
+  const gun = bugun();
+  // Aynı gün ikinci kez taşınmışsa yeni dönem açmak yerine üstüne yaz
+  const donemler = oncekiler.filter((d) => d.baslangic !== gun);
+  yeni[anahtar] = [...donemler, { poliklinik: ad, baslangic: gun }]
+    .sort((a, b) => (a.baslangic ?? "").localeCompare(b.baslangic ?? ""));
+  return yeni;
+}
+
+/** Hekimin bugünkü polikliniği ve varsa önceki dönemleri. */
+export function hekimOzeti(eslesme, hekim) {
+  const donemler = eslesme?.[hekimAnahtari(hekim)] ?? [];
+  return {
+    guncel: donemler.length ? donemler[donemler.length - 1].poliklinik : "",
+    gecmis: donemler.slice(0, -1)
+  };
+}
+
 /** Kayıtlarda geçen, henüz eşlenmemiş hekimleri çıkarır. */
 export function eksikHekimler(kayitlar, eslesme) {
   const sayac = new Map();

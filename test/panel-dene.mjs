@@ -124,30 +124,34 @@ try {
   assert.equal(await sayfa.locator(".hekim-kutu").count(), 1);
   assert.equal(await sayfa.locator(".hekim-kutu .ad.eksik").count(), 1,
     "polikliniği girilmemiş hekim işaretlenmeli");
-  assert.equal(await sayfa.locator(".hekim-satir").count(), 1, "tek dönemle başlamalı");
+  assert.ok(await sayfa.locator("#hekimEksikUyari").isVisible(),
+    "eksik poliklinik uyarısı görünmeli");
 
+  // İlk giriş sorusuz uygulanmalı
   await sayfa.locator(".hekim-satir input").first().fill("Ortodonti");
-  assert.equal(await sayfa.locator(".hekim-kutu .ad.eksik").count(), 0,
-    "poliklinik girilince işaret kalkmalı");
+  await sayfa.locator(".hekim-kutu .guncelle").click();
+  await sayfa.waitForSelector(".hekim-kutu .ad.eksik", { state: "detached" });
+  assert.equal(await sayfa.locator(".hekim-kutu .secim-sor").count(), 0,
+    "ilk girişte soru sorulmamalı");
+  await sayfa.waitForSelector("#hekimEksikUyari", { state: "hidden" });
+  console.log("✓ hekim eklenip polikliniği tek adımda giriliyor");
 
-  // Hekim poliklinik değiştirdiğinde ikinci dönem açılabilmeli
-  await sayfa.locator(".donem-ekle").click();
-  await sayfa.waitForFunction(() =>
-    document.querySelectorAll(".hekim-satir").length === 2);
-  await sayfa.locator(".hekim-satir").nth(1).locator("input").first()
-    .fill("Periodontoloji");
-  const tarihKutusu = sayfa.locator(".hekim-satir").nth(1).locator("input.tarih");
-  await tarihKutusu.fill("01.10.2026");
-  await tarihKutusu.blur();
-  assert.equal(await tarihKutusu.inputValue(), "01.10.2026",
-    "geçerli tarih kabul edilmeli");
+  // Var olan adı değiştirince düzeltme mi taşınma mı diye sorulmalı
+  await sayfa.locator(".hekim-satir input").first().fill("Periodontoloji");
+  await sayfa.locator(".hekim-kutu .guncelle").click();
+  await sayfa.waitForSelector(".hekim-kutu .secim-sor");
+  const secenekler = await sayfa.locator(".hekim-kutu .secim-sor button")
+    .allTextContents();
+  assert.deepEqual(secenekler, ["Yazım düzeltmesi", "Hekim taşındı"]);
 
-  await sayfa.locator("#btnHekimKaydet").click();
-  await sayfa.waitForFunction(() =>
-    document.getElementById("hekimDurum").textContent.trim().length > 0);
-  assert.equal(await sayfa.locator(".hekim-satir").count(), 2,
-    "kaydettikten sonra iki dönem de durmalı");
-  console.log("✓ hekim eşlemesi ve poliklinik değişikliği dönemi girilebiliyor");
+  await sayfa.locator(".hekim-kutu .secim-sor button", { hasText: "Hekim taşındı" })
+    .click();
+  await sayfa.waitForSelector(".hekim-kutu .gecmis");
+  const gecmis = await sayfa.locator(".hekim-kutu .gecmis").textContent();
+  assert.match(gecmis, /Ortodonti/, "eski poliklinik geçmişte görünmeli");
+  assert.equal(await sayfa.locator(".hekim-satir input").first().inputValue(),
+    "Periodontoloji", "güncel poliklinik yeni olmalı");
+  console.log("✓ taşınmada eski poliklinik geçmişte tutuluyor");
 
   // Doğrudan sorgu ayarı: varsayılan kapalı, açılınca kalıcı olmalı
   const kutu = sayfa.locator("#cbDogrudanIslem");
