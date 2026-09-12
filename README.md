@@ -1,8 +1,8 @@
 # HHD.FR.19 Anket Eklentisi
 
 Avcılar Ağız ve Diş Sağlığı Merkezi'nin **HHD.FR.19 Hasta Memnuniyet Anketi**
-formunu, HBYS ekranının yanındaki Chrome yan panelinden doldurup orijinal PDF
-şablonunun üzerine işaretleyen tarayıcı eklentisi.
+formunu, HBYS ekranının yanına yerleşen panel penceresinden doldurup orijinal
+PDF şablonunun üzerine işaretleyen tarayıcı eklentisi.
 
 Eklenti internete hiçbir istek atmaz; kullandığı kütüphaneler, yazı tipi ve
 boş form paketin içinde gömülüdür. Kişisel veri hastane içindeki klasörden
@@ -10,8 +10,12 @@ dışarı çıkmaz.
 
 ## Kurulum
 
-Chrome sürümünü önce doğrulayın: `chrome://version`. Yan panel **114 ve üstü**
-gerektirir.
+Chrome sürümünü önce doğrulayın: `chrome://version`. Eklenti **102 ve üstü**
+ile çalışır; hastanedeki Chrome 109 desteklenir.
+
+Panel, Chrome'un yan panelinde değil, eklenti simgesine basınca tarayıcının
+sağına yaslanan ayrı bir pencerede açılır — yan panel API'si 114'te geldiği
+için. Panel kapanınca tarayıcı penceresi eski boyutuna döner.
 
 **Tek makinede denemek için:** `chrome://extensions` → Geliştirici modu →
 **Paketlenmemiş yükle** → `eklenti/` klasörü (ya da paketten çıkan ZIP'in
@@ -144,7 +148,7 @@ eklenti/          yüklenecek eklenti
   okuyucu.js      HBYS sayfasının kendi bağlamında çalışan okuyucu (MAIN)
   kopru.js        sayfa ile panel arasındaki röle (ISOLATED)
   arkaplan.js     servis işçisi
-  panel/          yan panel arayüzü
+  panel/          panel penceresi arayüzü (pencere.js yerleşimi yapar)
   motor/          sorular, zaman, hekimler, PDF, kayıt, istatistik, rapor, liste
   varliklar/      boş form, yazı tipi, gömülü kütüphaneler
 araclar/          paketleme betiği

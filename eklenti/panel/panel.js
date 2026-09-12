@@ -1,8 +1,10 @@
-/* Yan panel: anketin doldurulduğu, önizlendiği ve kaydedildiği yer.
+/* Panel: anketin doldurulduğu, önizlendiği ve kaydedildiği yer.
  *
  * HBYS ile doğrudan konuşmaz; köprü içerik betiği üzerinden haberleşir.
+ * Chrome 109 uyarlaması: yan panel yerine ayrı pencerede açılır (bkz. pencere.js).
  */
 
+import { yanYanaDiz, genisligiHatirla, sekmeAc } from "./pencere.js";
 import {
   SORULAR, GORUSME_SONUCLARI, KATILIMCI_TURLERI, CINSIYETLER,
   YAS_GRUPLARI, EGITIM_DURUMLARI, FORM_SURUM, yasGrubu, kapsamDisiMi
@@ -261,13 +263,49 @@ function hbysOnerileriniUygula() {
 
 // ── HBYS ───────────────────────────────────────────────────
 
-function hbysYolla(tip, veri) {
-  chrome.tabs.query({ active: true, currentWindow: true }).then(([sekme]) => {
-    if (!sekme) return;
-    chrome.tabs.sendMessage(sekme.id, { kaynak: "panel", tip, veri }).catch(() => {
+const HBYS_DESENI = "http://10.212.200.215:8090/Poliklinik/*";
+let sonHbysSekmesi = null;       // en son mesaj gönderen HBYS sekmesi
+
+/* Yan paneldeyken hedef, pencerenin etkin sekmesiydi. Ayrı pencerede
+ * "etkin sekme" panelin kendisi olur; HBYS sekmesi adresinden bulunur.
+ * Birden çok HBYS sekmesi açıksa en son kullanılan tercih edilir. */
+async function hbysSekmesiBul() {
+  const sekmeler = await chrome.tabs.query({ url: HBYS_DESENI });
+  if (sekmeler.length <= 1) return sekmeler[0] ?? null;
+  let odak = null;
+  try { odak = await chrome.windows.getLastFocused({ windowTypes: ["normal"] }); } catch { /* yok */ }
+  return sekmeler.find((s) => odak && s.windowId === odak.id && s.active)
+    ?? sekmeler.find((s) => s.id === sonHbysSekmesi)
+    ?? sekmeler.find((s) => s.active)
+    ?? sekmeler[0];
+}
+
+function hbysUyarisi(baslik, metin) {
+  uyar("uyari", baslik, metin).dataset.hbys = "1";
+}
+
+function hbysUyarisiniKaldir() {
+  if ($("uyariAlani").querySelector("[data-hbys]")) uyarilariTemizle();
+}
+
+/** sessiz: HBYS hiç açık değilse yalnızca rozeti değiştir (açılışta). */
+function hbysYolla(tip, veri, { sessiz = false } = {}) {
+  hbysSekmesiBul().then((sekme) => {
+    if (!sekme) {
+      rozet($("rozetHbys"), "HBYS açık değil", "uyari");
+      if (!sessiz) {
+        hbysUyarisi("HBYS açık değil",
+          "Poliklinik hasta listesinin açık olduğu bir HBYS sekmesi bulunamadı.");
+      }
+      return;
+    }
+    return chrome.tabs.sendMessage(sekme.id, { kaynak: "panel", tip, veri }).catch(() => {
       rozet($("rozetHbys"), "HBYS yok", "kotu");
+      hbysUyarisi("HBYS sayfasına ulaşılamadı",
+        "HBYS sekmesini bir kez yenileyin (F5). Eklenti yeni kurulduysa ya da " +
+        "güncellendiyse bu gereklidir.");
     });
-  });
+  }).catch(() => { /* sekme sorgusu başarısız; bir sonraki denemede yeniden */ });
 }
 
 async function hastayiAl(hasta, kaynak = "hbys") {
@@ -318,9 +356,13 @@ async function hastayiAl(hasta, kaynak = "hbys") {
   ciz();
 }
 
-chrome.runtime.onMessage.addListener((m) => {
+chrome.runtime.onMessage.addListener((m, gonderen) => {
   if (m?.kaynak === "arkaplan" && m.tip === "kuyrugu-dene") { kuyrugaBak(); return; }
   if (m?.kaynak !== "hbys") return;
+
+  // HBYS'den mesaj geldiyse bağlantı var; komutlar da bu sekmeye gitsin.
+  if (gonderen?.tab?.id !== undefined) sonHbysSekmesi = gonderen.tab.id;
+  hbysUyarisiniKaldir();
 
   if (m.tip === "hasta") { hastayiAl(m.veri); return; }
   if (m.tip === "hazir" || m.tip === "liste") {
@@ -938,12 +980,12 @@ async function raporCikar() {
                            gelenHasta ? { gelenHasta, oran: hedefOran } : null,
                            raporBolumleri);
     const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
-    await chrome.tabs.create({ url });
+    await sekmeAc(url);
 
     durum.textContent = `${kayitlar.length} kayıttan rapor üretildi` +
       (bozuk.length ? ` · ${bozuk.length} dosya okunamadı: ${bozuk.join(", ")}` : "") +
       (eksik?.length ? ` · ${eksik.length} eski kayıt açılamadı (Türkçe adlı dosyalar)` : "") +
-      (onceki ? ` · ${donemEtiketi(oncekiAd)} ile karşılaştırıldı` : " · karşılaştırma yok");
+      (onceki?.length ? ` · ${donemEtiketi(oncekiAd)} ile karşılaştırıldı` : " · karşılaştırma yok");
   } catch (e) {
     durum.textContent = `Rapor üretilemedi: ${e.message ?? e}`;
   }
@@ -1088,7 +1130,7 @@ async function listeyiAc() {
   const sadece = $("cbSadeceUlasilan").checked;
   const html = listeHtml(donemEtiketi(sonuc.ay), sonuc.kayitlar, sadece);
   const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
-  await chrome.tabs.create({ url });
+  await sekmeAc(url);
   durum.textContent = listeNotu(sonuc, " listelendi");
 }
 
@@ -1264,6 +1306,8 @@ function baglaniklariKur() {
 }
 
 async function baslat() {
+  yanYanaDiz();              // ayrı pencerede açıldıysa HBYS'nin sağına yaslan
+  genisligiHatirla();
   sorulariKur();
   baglaniklariKur();
 
@@ -1293,8 +1337,8 @@ async function baslat() {
   ciz();
   await durumuTazele();
   await kuyrugaBak();
-  hbysYolla("seciliHasta");
-  hbysYolla("durum");
+  hbysYolla("seciliHasta", undefined, { sessiz: true });
+  hbysYolla("durum", undefined, { sessiz: true });
 }
 
 baslat();

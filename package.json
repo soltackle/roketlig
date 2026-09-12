@@ -1,7 +1,7 @@
 {
   "name": "hhd-fr-19-anket-eklentisi",
   "version": "0.1.0",
-  "description": "HBYS yanında yan panelden hasta memnuniyet anketi dolduran Chrome eklentisi",
+  "description": "HBYS yanındaki panel penceresinden hasta memnuniyet anketi dolduran Chrome eklentisi",
   "private": true,
   "type": "module",
   "scripts": {

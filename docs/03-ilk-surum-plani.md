@@ -38,11 +38,17 @@ Akış: `okuyucu.js` → `window.postMessage` → `koprü.js` →
 yoklama ile bileşenlerin oluşmasını bekler; ızgara yeniden oluşturulduğunda
 olay bağını tazeler.
 
-### Yan panel
+### Panel penceresi
 
-`chrome.sidePanel.setOptions({ tabId, enabled: true })` yalnızca HBYS
-sekmesinde açılır; başka sekmelerde panel görünmez. Panel açık kaldığı için
-HBYS'ye tıklamak cevapları kaybettirmez.
+> 0.10.0'da değişti: plan `chrome.sidePanel` üzerineydi, o API Chrome 114'te
+> geldi ve hastanedeki makineler 109'da. Panel artık eklenti simgesiyle açılan
+> ayrı bir pencerede (`type: "popup"`) çalışıyor; ekranın sağına tam boy
+> yaslanıyor, tarayıcı penceresi soluna daralıyor, panel kapanınca eski
+> boyutuna dönüyor. Yerleşim `panel/pencere.js`, açılış `arkaplan.js` içinde.
+
+Panel ayrı pencerede açık kaldığı için HBYS'ye tıklamak cevapları
+kaybettirmez. HBYS komutları, etkin sekmeye değil, adresinden bulunan HBYS
+sekmesine gider.
 
 ## Panel akışı
 
@@ -186,7 +192,7 @@ görünmeye devam eder.
 
 | Faz | İçerik | Durum |
 |---|---|---|
-| 1 | Manifest, yan panel, HBYS okuma | Yazıldı |
+| 1 | Manifest, panel penceresi, HBYS okuma | Yazıldı |
 | 2 | Görüşme sonucu, form, 1–5 klavye, taslak, mükerrer uyarısı | Yazıldı |
 | 3 | PDF işaretleme, önizleme, onay ve damga | Yazıldı, çıktısı doğrulandı |
 | 4 | Klasör izni, ay klasörleri, yazma kuyruğu | Yazıldı, hastanede denenmedi |
@@ -202,9 +208,9 @@ Kod `eklenti/` altında. Sınamalar için `npm test`:
 
 ## Başlamadan doğrulanacaklar
 
-1. **Chrome sürümü** — `chrome://version`. Yan panel 114+ istiyor;
-   Windows 7 makineler 109'da kaldı. Bu, eklentinin çalışıp çalışmayacağını
-   belirleyen tek şart.
+1. **Chrome sürümü** — `chrome://version`. Alt sınır 102; Windows 7
+   makinelerin kaldığı 109 destekleniyor (0.10.0 öncesi yan panel yüzünden
+   114+ isteniyordu).
 2. **Eklenti yükleme izni** — bilgi işlemin grup politikası. Paket mağazaya
    yüklenmeyecek; ya geliştirici modunda elle yüklenecek ya da bilgi işlem
    yerel bir `.crx` dosyasını politikayla dağıtacak. Geliştirici modu

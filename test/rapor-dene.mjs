@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const kok = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "eklenti");
 const { hesapla } = await import(path.join(kok, "motor/istatistik.js"));
-const { raporUret, BOLUMLER, VARSAYILAN_BOLUMLER } =
+const { raporUret, BOLUMLER, VARSAYILAN_BOLUMLER, oncekiAyKlasoru, donemEtiketi } =
   await import(path.join(kok, "motor/rapor.js"));
 
 const FORM = "HHD.FR.19 Rev.01";
@@ -339,6 +339,20 @@ function anket(n, ek = {}) {
   esleme = poliklinigiGuncelle(esleme, ad, "", { gecmiseUygula: true });
   assert.equal(anahtar in esleme, false);
   console.log("✓ düzeltme geçmişe uygulanıyor, taşınma yeni dönem açıyor");
+}
+
+{
+  // Karşılaştırma dönemi diskteki klasörü aramak için kullanılıyor; disk adları
+  // ASCII. Türkçe adla ("2026-08 Ağustos") aranırsa klasör bulunamaz ve önceki
+  // ayla karşılaştırma sessizce düşer.
+  assert.equal(oncekiAyKlasoru("2026-09 Eylul"), "2026-08 Agustos");
+  assert.equal(oncekiAyKlasoru("2026-03 Mart"), "2026-02 Subat");
+  assert.equal(oncekiAyKlasoru("2026-01 Ocak"), "2025-12 Aralik",
+    "yıl başında bir önceki yıla dönmeli");
+  assert.equal(oncekiAyKlasoru("boş"), null);
+  // Ekranda gösterilen ad yine tam Türkçe
+  assert.equal(donemEtiketi(oncekiAyKlasoru("2026-09 Eylul")), "Ağustos 2026");
+  console.log("✓ önceki ay klasörü ASCII adla bulunuyor");
 }
 
 console.log("\nTüm sınamalar geçti.");

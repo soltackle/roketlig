@@ -151,8 +151,10 @@ giriyor, yalnızca panelde gösteriliyor.
 
 `App.*` nesneleri sayfanın kendi JavaScript bağlamında yaşıyor. İçerik betikleri
 yalıtılmış dünyada çalıştığından bunlara doğrudan erişemez. Okuma yapan betik
-`"world": "MAIN"` ile enjekte edilmeli (MV3, Chrome 111+); yan panel zaten
-Chrome 114+ istediği için bu ek bir kısıt getirmiyor. Okunan veri
+`"world": "MAIN"` ile enjekte edilmeli. Manifestteki `world` alanı Chrome
+111+ ister; 109'u desteklemek için betik manifestten değil, servis işçisinden
+`chrome.scripting.registerContentScripts` ile kaydediliyor — aynı alan orada
+102'den beri var. Okunan veri
 `window.postMessage` ile yalıtılmış içerik betiğine, oradan da panele aktarılır.
 
 Sayfaya yazma yapılmayacak, yalnızca okuma. Ek ağ isteği atılmayacak; hâlihazırda

@@ -1,4 +1,4 @@
-/* Eklentiyi gerçek Chromium'a yükleyip yan panel sayfasını açar.
+/* Eklentiyi gerçek Chromium'a yükleyip panel sayfasını açar.
  *
  * Amaç: modüllerin yüklendiğini, panelin çizildiğini ve konsola hata
  * düşmediğini doğrulamak. HBYS bağlantısı bu ortamda yok; panelin
@@ -30,6 +30,22 @@ try {
   if (!sw) sw = await baglam.waitForEvent("serviceworker", { timeout: 15000 });
   const kimlik = new URL(sw.url()).host;
   console.log(`✓ servis işçisi çalışıyor · eklenti kimliği ${kimlik}`);
+
+  // okuyucu.js manifestten değil servis işçisinden kaydediliyor: manifestteki
+  // "world": "MAIN" Chrome 111+ ister, chrome.scripting ile aynı şey 102+.
+  // Kayıt düşerse HBYS'den hiçbir veri gelmez, panel sessizce boş kalır.
+  const okuyucu = await sw.evaluate(async () => {
+    for (let i = 0; i < 40; i += 1) {
+      const [k] = await chrome.scripting.getRegisteredContentScripts({ ids: ["okuyucu"] });
+      if (k) return k;
+      await new Promise((c) => setTimeout(c, 250));
+    }
+    return null;
+  });
+  assert.ok(okuyucu, "okuyucu.js içerik betiği kaydedilmeli");
+  assert.equal(okuyucu.world, "MAIN", "okuyucu.js sayfanın kendi bağlamında çalışmalı");
+  assert.deepEqual(okuyucu.js, ["okuyucu.js"]);
+  console.log("✓ okuyucu.js MAIN bağlamına kaydedildi");
 
   const sayfa = await baglam.newPage();
   const hatalar = [];

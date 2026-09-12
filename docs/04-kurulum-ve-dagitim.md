@@ -2,9 +2,16 @@
 
 ## Önce: Chrome sürümü
 
-Adres çubuğuna `chrome://version`. Yan panel **114 ve üstü** gerektirir;
-Windows 7 makineler 109'da kaldığı için orada çalışmaz. Bu, eklentinin çalışıp
-çalışmayacağını belirleyen tek şart.
+Adres çubuğuna `chrome://version`. Eklenti **102 ve üstü** ile çalışır;
+Windows 7 makinelerin takılı kaldığı **109** dâhil.
+
+0.10.0'a kadar yan panel (`chrome.sidePanel`) kullanılıyordu ve o API 114'te
+geldiği için 109 dışarıda kalıyordu. Artık panel, eklenti simgesine basınca
+tarayıcının sağına yaslanan ayrı bir pencerede açılıyor; HBYS sayfasını okuyan
+betik de manifestten değil, servis işçisinden kaydediliyor (`"world": "MAIN"`
+manifest alanı 111+, `chrome.scripting` ile aynı şey 102+). Görünen davranış
+yan paneldekiyle aynı: panel sağda tam boy durur, tarayıcı penceresi soluna
+daralır, panel kapanınca eski boyutuna döner.
 
 ## Yol 1 — Paketlenmemiş yükleme (tek makine, deneme)
 

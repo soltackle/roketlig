@@ -7,6 +7,7 @@
  */
 
 import { hesapla, karsilastir, sayi, yuzde, EN_AZ_ANKET } from "./istatistik.js";
+import { ayKlasoruAdi } from "./kayit.js";
 import { sureGoster } from "./zaman.js";
 
 const AY_ADLARI = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -23,13 +24,12 @@ export function donemEtiketi(ayKlasoru) {
   return `${AY_ADLARI[Number(m[2]) - 1] ?? m[2]} ${m[1]}`;
 }
 
+/** Diskteki klasör adı ASCII ("2026-08 Agustos") — bkz. kayit.js AYLAR notu.
+ *  Türkçe adla ("Ağustos") aranırsa klasör bulunamaz, karşılaştırma düşer. */
 export function oncekiAyKlasoru(ayKlasoru) {
   const m = /^(\d{4})-(\d{2})/.exec(String(ayKlasoru));
   if (!m) return null;
-  let yil = Number(m[1]);
-  let ay = Number(m[2]) - 1;
-  if (ay === 0) { ay = 12; yil -= 1; }
-  return `${yil}-${String(ay).padStart(2, "0")} ${AY_ADLARI[ay - 1]}`;
+  return ayKlasoruAdi(new Date(Number(m[1]), Number(m[2]) - 2, 1));
 }
 
 /**
