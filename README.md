@@ -68,10 +68,24 @@ dosyalarından yeniden üretilebiliyor.
 Ağ klasörüne o an ulaşılamazsa anket eklentide bekler ve bağlantı gelince
 yazılır; panelde bekleyen kayıt sayısı görünür.
 
+**Son gelişinde yapılan işlemler.** Aramadan önce hasta kartından açılır:
+hastaya hangi gün ne yapıldığı, hangi dişe, hangi hekim tarafından. Yalnızca
+gösterilir — sağlık bilgisi ne veri kaydına ne PDF'e yazılır. Liste HBYS'den
+okunduğu için hastanın Tedavi-Plan sekmesinde açık olması gerekir.
+
+**Aylık hedef.** Rapor sekmesine o ay kuruma gelen hasta sayısı elle girilir;
+eklenti bunun yüzdesini (varsayılan %1, Ayarlar'dan değiştirilir) hedef sayar.
+Üst çubuktaki rozet "Bu ay: 38/42 kişi" diye ilerlemeyi gösterir. Hedef kişi
+üzerinden ölçülür: aynı hastayı iki kez aramak tek kişi sayılır.
+
 **Anket listesi.** Rapor sekmesinden, yapılan anketlerin dökümü alınır: ad
-soyad, T.C. kimlik no, telefon, başvurduğu poliklinik, hekim, muayene tarihi,
-aranma tarihi ve saati, görüşme sonucu, anketi uygulayan. Ekranda açılıp
-yazdırılabilir ya da CSV olarak Excel'e alınabilir.
+soyad, T.C. kimlik no, telefon, başvurduğu poliklinik, hekim, muayene tarihi
+ve saati, aranma tarihi ve saati, görüşme sonucu, anketi uygulayan. Ekranda
+açılıp yazdırılabilir ya da CSV olarak Excel'e alınabilir.
+
+Muayene ile arama zamanı üç yerde birden görünür: PDF'in altındaki damgada,
+listede ve raporda. Rapor ayrıca **ortalama dönüş süresini** — muayeneden
+aramaya kadar geçen süreyi — hesaplar.
 
 ## Depo düzeni
 
@@ -82,7 +96,7 @@ eklenti/          yüklenecek eklenti
   kopru.js        sayfa ile panel arasındaki röle (ISOLATED)
   arkaplan.js     servis işçisi
   panel/          yan panel arayüzü
-  motor/          sorular, PDF işaretleme, kayıt, istatistik, rapor
+  motor/          sorular, zaman, PDF işaretleme, kayıt, istatistik, rapor, liste
   varliklar/      boş form, yazı tipi, gömülü kütüphaneler
 araclar/          paketleme betiği
 test/             Node ve Chromium sınamaları

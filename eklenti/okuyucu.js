@@ -95,8 +95,59 @@
       hekimId: al(kayit, "DOKTOR_ID"),
       poliklinik: birimAdi(),
       islemTarihi: al(kayit, "TARIHI"),
+      // Muayene saati: başlama yoksa kabul, o da yoksa bitiş zamanı
+      muayeneZamani: al(kayit, "MUAYENE_BASLAMA_ZAMANI")
+                  ?? al(kayit, "KABUL_ZAMANI")
+                  ?? al(kayit, "MUAYENE_BITIS_ZAMANI"),
       muayeneBitis: al(kayit, "MUAYENE_BITIS_ZAMANI"),
       islemDurumu: al(kayit, "HASTA_ISLEM_DURUM_BASLIK")
+    };
+  }
+
+  // --- Yapılan işlemler ----------------------------------------------------
+
+  /** Tedavi-Plan sekmesindeki işlem ızgarasının o an hangi hastaya ait olduğu. */
+  function yuklüHastaId() {
+    try {
+      return typeof window.getHastaId === "function" ? window.getHastaId() : null;
+    } catch { return null; }
+  }
+
+  /**
+   * Hastanın yapılmış işlemleri. Izgara yalnızca hasta Tedavi-Plan sekmesinde
+   * açıkken doluyor; açık değilse boş döner ve panel bunu kullanıcıya söyler.
+   */
+  function islemler(muracaatId) {
+    const g = window.App && window.App.GridHastaTetkikDetay;
+    const store = g && g.getStore && g.getStore();
+    if (!store) return { yuklu: false, hastaId: null, satirlar: [] };
+
+    const satirlar = [];
+    store.each((k) => {
+      satirlar.push({
+        ad: al(k, "TETKIK_ADI"),
+        kod: al(k, "TETKIK_KODU"),
+        dis: al(k, "DIS_KODU"),
+        tarih: al(k, "TARIHI"),
+        hekim: al(k, "DOKTOR_ADI"),
+        muracaatId: al(k, "MURACAAT_ID"),
+        kayitZamani: al(k, "KAYIT_ZAMANI")
+      });
+    });
+
+    // Anket belirli bir başvuruya ait; o başvurunun işlemlerini ayır.
+    const hedef = muracaatId === undefined || muracaatId === null
+      ? null : String(muracaatId);
+    const ayniBasvuru = hedef
+      ? satirlar.filter((s) => String(s.muracaatId) === hedef)
+      : [];
+
+    return {
+      yuklu: true,
+      hastaId: yuklüHastaId(),
+      toplam: satirlar.length,
+      satirlar: ayniBasvuru.length ? ayniBasvuru : satirlar,
+      basvuruyaGore: ayniBasvuru.length > 0
     };
   }
 
@@ -195,6 +246,10 @@
         adet: kayitlar().length,
         poliklinik: birimAdi()
       });
+    }
+
+    if (m.tip === "islemler") {
+      return yolla("islemler", islemler(m.veri && m.veri.muracaatId));
     }
 
     if (m.tip === "rastgele") {

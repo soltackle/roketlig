@@ -20,6 +20,7 @@ function anket(n, ek = {}) {
     uygulayan: "Şenay IŞIK",
     hasta: {
       hastaId: 1000 + n, adSoyad: `HASTA ${n}`, telefon: "0532 000 00 00",
+      muayeneZamani: `2026-09-${String((n % 28) + 1).padStart(2, "0")}T09:30:00`,
       poliklinik: n % 2 ? "Ağız, Diş ve Çene Cerrahisi" : "Restoratif Diş Tedavisi",
       hekim: n % 3 ? "Dt. Ayşe DEMİR" : "Dt. Şükrü DOĞAN"
     },
@@ -133,6 +134,49 @@ function anket(n, ek = {}) {
   const hedef = process.argv[2] || "/tmp/rapor-ornek.html";
   await writeFile(hedef, html);
   console.log(`✓ rapor üretildi: ${hedef} (${(html.length / 1024).toFixed(0)} KB)`);
+}
+
+// --- kişi bazlı sayım ve dönüş süresi -------------------------------------
+{
+  // Aynı hasta üç kez arandı: bu üç arama ama tek kişi.
+  const ayniHasta = (n, sonuc) => anket(n, {
+    anketId: `x${n}`, gorusmeSonucu: sonuc,
+    hasta: { ...anket(1).hasta, hastaId: 7777 },
+    cevaplar: sonuc === "ulasildi" ? anket(1).cevaplar : {}
+  });
+  const i = hesapla([ayniHasta(1, "acmadi"), ayniHasta(2, "acmadi"), ayniHasta(3, "ulasildi")]);
+  assert.equal(i.arananlar, 3, "arama sayısı üç");
+  assert.equal(i.arananKisi, 1, "kişi sayısı bir");
+  assert.equal(i.ulasilanKisi, 1);
+  assert.equal(i.kisiUlasilmaOrani, 1, "kişi bazında ulaşılma tam");
+  assert.equal(i.ulasilmaOrani, 1 / 3, "arama bazında oran ayrı hesaplanır");
+  console.log("✓ kişi bazlı sayım aramadan ayrı");
+
+  const j = hesapla([anket(1, {
+    hasta: { ...anket(1).hasta, muayeneZamani: "2026-09-10T09:00:00" },
+    zamanDamgasi: "2026-09-11T15:00:00"
+  })]);
+  assert.equal(j.donusOlculen, 1);
+  assert.equal(j.ortalamaDonus, 30, "muayeneden aramaya 30 saat");
+  console.log("✓ ortalama dönüş süresi hesaplanıyor");
+}
+
+// --- hedef bölümü ---------------------------------------------------------
+{
+  const kayitlar = Array.from({ length: 12 }, (_, n) => anket(n + 1));
+  const hedefli = raporUret("2026-09 Eylul", kayitlar, null, { gelenHasta: 4200, oran: 1 });
+  assert.ok(hedefli.includes("Kapsam ve hedef"));
+  assert.ok(hedefli.includes("4.200"), "gelen hasta sayısı raporda");
+  assert.ok(hedefli.includes("42"), "hedef %1 = 42 kişi");
+  assert.ok(hedefli.includes("Ortalama dönüş süresi"));
+
+  const hedefsiz = raporUret("2026-09 Eylul", kayitlar, null, null);
+  assert.ok(hedefsiz.includes("girilmediği için hedef hesaplanmamıştır"),
+    "hedef yoksa rapor bunu söylemeli");
+  // Karşılaştırma dönemi yokken ok işareti basılmamalı
+  assert.ok(!/class="fark[^"]*">[^<]*—/.test(hedefsiz),
+    "önceki ay yokken fark göstergesi boş kalmalı");
+  console.log("✓ hedef bölümü ve eksik hedef uyarısı doğru");
 }
 
 console.log("\nTüm sınamalar geçti.");

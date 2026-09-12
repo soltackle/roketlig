@@ -56,6 +56,7 @@ Hepsi `App.GridHastaListesi.getStore()` kayıtlarında mevcut:
 | `MURACAAT_ID` | Başvuru bazlı tekillik |
 | `TARIHI`, `MUAYENE_BITIS_ZAMANI` | Hangi güne ait olduğu |
 | `TC_KIMLIK_NO` | Anket listesi (resmî döküm) |
+| `MUAYENE_BASLAMA_ZAMANI` | Muayene saati (yoksa `KABUL_ZAMANI`, o da yoksa bitiş) |
 
 ### Poliklinik adı burada yok
 
@@ -80,6 +81,33 @@ kaydında bulunuyor. Ayrıca T.C. kimlik numarası ekranda yıldızlı gösteril
 Sonuç: eklenti hasta bilgisini **hasta listesi kaydından** almalı; başlık
 yalnızca "şu an hangi hasta seçili" bilgisini doğrulamak için kullanılmalı.
 Akış zaten "İşlemi Bitenler" listesinden başladığı için bu bir kısıt değil.
+
+## Yapılan işlemler
+
+Anketçi hastayı aramadan önce ne yapıldığına bakıyor. Bu bilgi
+`App.GridHastaTetkikDetay` ızgarasında:
+
+| Alan | İçerik |
+|---|---|
+| `TETKIK_ADI` | İşlemin adı |
+| `TETKIK_KODU` | SUT kodu |
+| `DIS_KODU` | Hangi diş |
+| `TARIHI` | İşlem tarihi |
+| `DOKTOR_ADI` | İşlemi yapan hekim |
+| `MURACAAT_ID` | Hangi başvuruya ait |
+
+Store `hastaGelisId: 0` ile besleniyor, yani hastanın **tüm geçmişini** taşıyor.
+Anketin ait olduğu ziyareti ayırmak için hasta listesi satırındaki
+`MURACAAT_ID` ile eşleştiriliyor; eşleşme bulunamazsa tüm işlemler tarihe göre
+gruplanıp gösteriliyor.
+
+**Kısıt:** bu ızgara yalnızca hasta Tedavi-Plan sekmesinde açıkken dolu oluyor.
+Eklenti ek istek atmadığı için, hasta orada açık değilse panel bunu söyleyip
+kullanıcıdan açmasını istiyor. `getHastaId()` ile ızgaranın o an hangi hastaya
+ait olduğu doğrulanıyor — başka hastanın işlemleri yanlışlıkla gösterilmiyor.
+
+Bu veriler **hiçbir yere yazılmıyor**: sağlık bilgisi ne anket kaydına ne PDF'e
+giriyor, yalnızca panelde gösteriliyor.
 
 ## Erişim biçimi
 

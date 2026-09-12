@@ -10,6 +10,7 @@
 <header id="ustCubuk">
   <div class="rozetler">
     <span id="rozetKlasor" class="rozet" title="Kayıt klasörü durumu">Klasör yok</span>
+    <span id="rozetAy" class="rozet" title="Bu ay aranan kişi sayısı ve hedef">Bu ay: —</span>
     <span id="rozetKuyruk" class="rozet gizli" title="Yazılmayı bekleyen anket">0 bekliyor</span>
     <span id="rozetHbys" class="rozet" title="HBYS bağlantısı">HBYS bekleniyor</span>
   </div>
@@ -45,6 +46,11 @@
     <div class="satir">
       <button id="btnRastgele" class="ikincil" type="button">İşlemi bitenlerden rastgele öner</button>
       <button id="btnYenile" class="ikincil dar" type="button" title="Seçili hastayı yeniden oku">↻</button>
+    </div>
+    <div class="satir">
+      <button id="btnIslemler" class="ikincil" type="button">
+        Son gelişinde yapılan işlemler
+      </button>
     </div>
     <div class="alanlar">
       <label>Ad soyad <input id="alanAd" type="text" autocomplete="off"></label>
@@ -118,6 +124,11 @@
   <fieldset>
     <legend>Ay sonu raporu</legend>
     <label>Ay <select id="aySecim"></select></label>
+    <label>Kuruma gelen hasta sayısı (bu ay)
+      <input id="alanGelenHasta" type="number" min="0" step="1" inputmode="numeric"
+             placeholder="elle girilir">
+    </label>
+    <p id="hedefNot" class="not"></p>
     <div class="satir">
       <button id="btnRapor" class="birincil" type="button">Raporu üret</button>
       <button id="btnAylariYenile" class="ikincil dar" type="button" title="Ay listesini yenile">↻</button>
@@ -168,6 +179,18 @@
   </fieldset>
 
   <fieldset>
+    <legend>Hedef</legend>
+    <label>Aranması gereken hasta oranı (%)
+      <input id="alanHedefOran" type="number" min="0" max="100" step="0.1"
+             inputmode="decimal">
+    </label>
+    <p class="not">
+      Aylık kuruma gelen hasta sayısının bu kadarı aranır. Hasta sayısı Rapor
+      sekmesinden, ay ay girilir.
+    </p>
+  </fieldset>
+
+  <fieldset>
     <legend>Bekleyen kayıtlar</legend>
     <p id="kuyrukDurum" class="not">Bekleyen kayıt yok.</p>
     <button id="btnKuyruk" class="ikincil" type="button">Şimdi yazmayı dene</button>
@@ -175,6 +198,17 @@
 </section>
 
 </main>
+
+<!-- Son gelişte yapılan işlemler -->
+<div id="islemler" class="ortu gizli">
+  <div class="ortu-ic">
+    <div class="ortu-ust">
+      <strong id="islemlerBaslik">Son gelişinde yapılan işlemler</strong>
+      <button id="btnIslemlerKapat" class="sessiz" type="button">Kapat</button>
+    </div>
+    <div id="islemlerGovde" class="ortu-govde"></div>
+  </div>
+</div>
 
 <!-- Önizleme -->
 <div id="onizleme" class="ortu gizli">

@@ -6,26 +6,13 @@
  */
 
 import { GORUSME_SONUCLARI } from "./sorular.js";
+import { tarihGoster, saatGoster } from "./zaman.js";
 
 const SONUC_ADI = new Map(GORUSME_SONUCLARI.map((s) => [s.kod, s.etiket]));
 
 const kacis = (s) => String(s ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   .replace(/"/g, "&quot;");
-
-const iki = (n) => String(n).padStart(2, "0");
-
-/**
- * HBYS'den gelen tarih alanı kimi zaman ISO metni, kimi zaman "11.09.2026"
- * gibi hazır biçimde geliyor. Tanıyamadığını bozmadan olduğu gibi bırakır.
- */
-export function tarihGoster(ham) {
-  if (ham === null || ham === undefined || ham === "") return "";
-  if (/^\d{2}\.\d{2}\.\d{4}/.test(String(ham))) return String(ham).slice(0, 10);
-  const d = ham instanceof Date ? ham : new Date(ham);
-  if (Number.isNaN(d.getTime())) return String(ham);
-  return `${iki(d.getDate())}.${iki(d.getMonth() + 1)}.${d.getFullYear()}`;
-}
 
 export const SUTUNLAR = [
   { baslik: "Sıra",              al: (k, n) => String(n + 1) },
@@ -34,7 +21,8 @@ export const SUTUNLAR = [
   { baslik: "Telefon",           al: (k) => k.hasta?.telefon ?? "" },
   { baslik: "Başvurduğu Poliklinik", al: (k) => k.hasta?.poliklinik ?? "" },
   { baslik: "Hekim",             al: (k) => k.hasta?.hekim ?? "" },
-  { baslik: "Muayene Tarihi",    al: (k) => tarihGoster(k.hasta?.islemTarihi) },
+  { baslik: "Muayene Tarihi",    al: (k) => tarihGoster(k.hasta?.muayeneZamani ?? k.hasta?.islemTarihi) },
+  { baslik: "Muayene Saati",     al: (k) => saatGoster(k.hasta?.muayeneZamani) },
   { baslik: "Aranma Tarihi",     al: (k) => k.tarihGosterim || tarihGoster(k.tarih) },
   { baslik: "Aranma Saati",      al: (k) => k.saat ?? "" },
   { baslik: "Görüşme Sonucu",    al: (k) => SONUC_ADI.get(k.gorusmeSonucu) ?? k.gorusmeSonucu ?? "" },
@@ -106,7 +94,8 @@ footer { margin-top: 14px; font-size: 10.5px; color: #5d6677; }
 }`;
 
 const SAY_SUTUNLARI = new Set(["Sıra", "T.C. Kimlik No"]);
-const ORTA_SUTUNLARI = new Set(["Muayene Tarihi", "Aranma Tarihi", "Aranma Saati"]);
+const ORTA_SUTUNLARI = new Set(["Muayene Tarihi", "Muayene Saati",
+                                "Aranma Tarihi", "Aranma Saati"]);
 
 function sinif(baslik) {
   if (SAY_SUTUNLARI.has(baslik)) return " class=\"say\"";

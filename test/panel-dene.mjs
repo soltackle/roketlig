@@ -91,6 +91,22 @@ try {
     "Ana klasörü seç");
   console.log("✓ klasör uyarısı ve düğmesi Anket sekmesinde görünüyor");
 
+  // Hedef: kuruma gelen hasta sayısı girilince %1'i hedef olmalı
+  await sayfa.locator('.sekme[data-sekme="rapor"]').click();
+  assert.ok(await sayfa.locator("#alanGelenHasta").isVisible(),
+    "gelen hasta sayısı kutusu Rapor sekmesinde olmalı");
+  assert.ok(await sayfa.locator("#btnIslemler").count() === 1,
+    "işlemler düğmesi olmalı");
+  console.log("✓ hedef kutusu ve işlemler düğmesi yerinde");
+  await sayfa.locator('.sekme[data-sekme="anket"]').click();
+
+  // Hasta seçilmeden işlemler istenirse uyarmalı
+  await sayfa.locator("#btnIslemler").click();
+  await sayfa.waitForSelector("#uyariAlani .uyari-kutu");
+  assert.match(await sayfa.locator("#uyariAlani .uyari-kutu").textContent(),
+    /Hasta seçilmedi/);
+  console.log("✓ hasta seçilmeden işlem istenince uyarıyor");
+
   // Hasta yakını seçilince cinsiyet ve yaş boşalmalı.
   await sayfa.locator("#cinsiyetSecim .secim", { hasText: "Erkek" }).click();
   await sayfa.locator("#katilanSecim .secim", { hasText: "Hasta yakını" }).click();

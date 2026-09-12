@@ -7,6 +7,7 @@
  */
 
 import { hesapla, karsilastir, sayi, yuzde } from "./istatistik.js";
+import { sureGoster } from "./zaman.js";
 
 const AY_ADLARI = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
                    "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
@@ -42,7 +43,9 @@ function kart(etiket, deger, altYazi = "") {
 }
 
 function fark(deger, basamak = 2, birim = "") {
-  if (deger === null || deger === undefined || Math.abs(deger) < 5e-3) return "";
+  // Karşılaştırma dönemi yoksa deger NaN gelebilir; ok işaretiyle "—" basmayalım.
+  if (deger === null || deger === undefined || Number.isNaN(deger)
+      || Math.abs(deger) < 5e-3) return "";
   const yon = deger > 0 ? "artis" : "azalis";
   const ok = deger > 0 ? "▲" : "▼";
   return `<span class="fark ${yon}">${ok} ${sayi(Math.abs(deger), basamak)}${birim}</span>`;
@@ -194,9 +197,11 @@ footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid var(--cizgi)
  * @param {string} ayKlasoru   "2026-09 Eylül"
  * @param {object[]} kayitlar  bu ayın veri kayıtları
  * @param {object[]|null} oncekiKayitlar  önceki ayın kayıtları (varsa)
+ * @param {{gelenHasta:number, oran:number}|null} hedef  kuruma gelen hasta
+ *        sayısı ve aranması gereken oran (elle girilir)
  * @returns {string} kendi içinde yeterli, yazdırmaya hazır HTML
  */
-export function raporUret(ayKlasoru, kayitlar, oncekiKayitlar = null) {
+export function raporUret(ayKlasoru, kayitlar, oncekiKayitlar = null, hedef = null) {
   const donem = donemEtiketi(ayKlasoru);
   const i = hesapla(kayitlar);
   const onceki = oncekiKayitlar && oncekiKayitlar.length ? hesapla(oncekiKayitlar) : null;
@@ -207,30 +212,59 @@ export function raporUret(ayKlasoru, kayitlar, oncekiKayitlar = null) {
 
   // --- Özet kartları
   bolumler.push(`<div class="kartlar">
-    ${kart("Aranan hasta", sayi(i.arananlar),
-           k ? `önceki ay ${sayi(onceki.arananlar)}` : "")}
-    ${kart("Ulaşılan", `${sayi(i.ulasilanlar)} ${fark(k?.ulasilanlar, 0)}`,
+    ${kart("Aranan kişi", sayi(i.arananKisi),
+           i.arananlar !== i.arananKisi ? `${sayi(i.arananlar)} arama` :
+           (k ? `önceki ay ${sayi(onceki.arananKisi)}` : ""))}
+    ${kart("Ulaşılan", `${sayi(i.ulasilanlar)} ${fark(k?.ulasilanlar ?? null, 0)}`,
            `ulaşılma oranı ${yuzde(i.ulasilmaOrani)}`)}
     ${kart("Tamamlanan anket", sayi(i.tamamlananlar),
            `ulaşılanların ${yuzde(i.tamamlanmaOrani)}'i`)}
     ${kart("Genel ortalama",
            i.genelOrtalama === null ? "—"
-             : `${sayi(i.genelOrtalama, 2)}<span class="kart-alt" style="display:inline"> / 5</span> ${fark(k?.genelOrtalama)}`,
+             : `${sayi(i.genelOrtalama, 2)}<span class="kart-alt" style="display:inline"> / 5</span> ${fark(k?.genelOrtalama ?? null)}`,
            `${sayi(i.puanliCevapAdedi)} puanlanan cevap`)}
     ${kart("Memnuniyet (ortalama/5)", yuzde(i.genelMemnuniyet))}
     ${kart("Memnuniyet (4-5 verenler)",
-           `${yuzde(i.genelDortBesOrani)} ${fark(k?.genelDortBesOrani === null ? null : k?.genelDortBesOrani * 100, 1, " puan")}`)}
+           `${yuzde(i.genelDortBesOrani)} ${fark(
+             k?.genelDortBesOrani == null ? null : k.genelDortBesOrani * 100, 1, " puan")}`)}
+    ${kart("Ortalama dönüş süresi",
+           i.ortalamaDonus === null ? "—" : sureGoster(i.ortalamaDonus),
+           i.ortalamaDonus === null ? "muayene saati olan kayıt yok"
+             : `ortanca ${sureGoster(i.ortancaDonus)} · ${sayi(i.donusOlculen)} kayıt`)}
   </div>`);
 
-  // --- Görüşme sonuçları
-  bolumler.push(bolum("Görüşme sonuçları", tablo(
-    ["Sonuç", "Adet", "Oran"],
-    i.sonucDagilimi.map((s) => [
-      kacis(s.etiket), sayi(s.adet), i.arananlar ? yuzde(s.adet / i.arananlar) : "—"
-    ]),
-    ["", "say", "say"]
-  ), "Ulaşılamayan görüşmeler PDF'siz kayıt olarak tutulur; ulaşılma oranı ve " +
-     "tekrar aranacaklar listesi bu kayıtlardan çıkar."));
+  // --- Hedef ve kapsam
+  const oran = hedef?.oran ?? 1;
+  const gereken = hedef?.gelenHasta ? Math.ceil(hedef.gelenHasta * oran / 100) : null;
+  const hedefTablosu = tablo(
+    ["Kuruma gelen hasta", `Aranması gereken (%${sayi(oran, oran % 1 ? 1 : 0)})`,
+     "Aranan kişi", "Ulaşılan kişi", "Gerçekleşme"],
+    [[
+      hedef?.gelenHasta ? sayi(hedef.gelenHasta) : "—",
+      gereken === null ? "—" : sayi(gereken),
+      sayi(i.arananKisi),
+      sayi(i.ulasilanKisi),
+      gereken ? yuzde(i.arananKisi / gereken) : "—"
+    ]],
+    ["say", "say", "say", "say", "say"]
+  );
+
+  bolumler.push(bolum("Kapsam ve hedef",
+    hedefTablosu + `<div style="margin-top:14px">${tablo(
+      ["Görüşme sonucu", "Adet", "Oran"],
+      i.sonucDagilimi.map((s) => [
+        kacis(s.etiket), sayi(s.adet), i.arananlar ? yuzde(s.adet / i.arananlar) : "—"
+      ]),
+      ["", "say", "say"]
+    )}</div>`,
+    (gereken === null
+      ? "Kuruma gelen hasta sayısı girilmediği için hedef hesaplanmamıştır; " +
+        "panelin Rapor sekmesinden girilebilir. "
+      : `Aylık hasta sayısının %${sayi(oran, oran % 1 ? 1 : 0)}'i aranmalıdır. `) +
+    "Hedef kişi üzerinden ölçülür: aynı hastayı birden çok kez aramak tek kişi " +
+    "sayılır. Sonuç tablosundaki adetler ise arama sayısıdır — ulaşılamayan bir " +
+    "hasta tekrar arandığında iki satır oluşur. Ulaşılamayan görüşmeler PDF'siz " +
+    "kayıt olarak tutulur; tekrar aranacaklar listesi bu kayıtlardan çıkar."));
 
   // --- Soru bazlı
   const soruSatirlari = i.sorular.map((s) => {

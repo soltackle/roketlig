@@ -11,6 +11,7 @@ import { anketiIsaretle } from "../motor/pdf.js";
 import * as kayitDeposu from "../motor/kayit.js";
 import { raporUret, oncekiAyKlasoru, donemEtiketi } from "../motor/rapor.js";
 import { listeHtml, listeCsv } from "../motor/liste.js";
+import { tarihGoster, zamanGoster } from "../motor/zaman.js";
 
 const $ = (id) => document.getElementById(id);
 const iki = (n) => String(n).padStart(2, "0");
@@ -20,7 +21,7 @@ const iki = (n) => String(n).padStart(2, "0");
 const bosTaslak = () => ({
   gorusmeSonucu: null,
   hasta: { hastaId: null, adSoyad: "", tcKimlikNo: "", telefon: "", poliklinik: "",
-           hekim: "", islemTarihi: null, poliklinikOneri: false },
+           hekim: "", islemTarihi: null, muayeneZamani: null, poliklinikOneri: false },
   katilimci: { tur: null, cinsiyet: null, yasGrubu: null, egitim: null },
   cevaplar: {},
   tetkikYok: false,
@@ -32,6 +33,7 @@ let hbysHastasi = null;
 let etkinSoru = 1;
 let uygulayan = "";
 let onizlemeUrl = null;
+let hedefOran = 1;                 // aylık hasta sayısının aranacak yüzdesi
 
 // ── Yardımcılar ────────────────────────────────────────────
 
@@ -147,6 +149,7 @@ function ciz() {
       `<div class="ad"></div><dl>${
         satir("Yaş", hbysHastasi.yas) + satir("Cinsiyet", hbysHastasi.cinsiyet) +
         satir("Telefon", hbysHastasi.telefon) + satir("Hekim", hbysHastasi.hekim) +
+        satir("Muayene", zamanGoster(hbysHastasi.muayeneZamani ?? hbysHastasi.islemTarihi)) +
         satir("İşlem", hbysHastasi.islemDurumu)}</dl>`;
     kart.querySelector(".ad").textContent = hbysHastasi.adSoyad;
   } else if (!kart.classList.contains("bos")) {
@@ -260,6 +263,7 @@ async function hastayiAl(hasta, kaynak = "hbys") {
     poliklinik: hasta.poliklinik ?? "",
     hekim: hasta.hekim ?? "",
     islemTarihi: hasta.islemTarihi ?? null,
+    muayeneZamani: hasta.muayeneZamani ?? hasta.islemTarihi ?? null,
     poliklinikOneri: Boolean(hasta.poliklinik)
   };
   $("alanAd").value = taslak.hasta.adSoyad;
@@ -297,6 +301,8 @@ chrome.runtime.onMessage.addListener((m) => {
     rozet($("rozetHbys"), "HBYS bağlı", "iyi");
     return;
   }
+  if (m.tip === "islemler") { islemleriGoster(m.veri); return; }
+
   if (m.tip === "rastgele") {
     if (m.veri?.hasta) { hastayiAl(m.veri.hasta, "rastgele"); return; }
     uyar("uyari", "Rastgele hasta önerilemedi",
@@ -388,7 +394,8 @@ function kayitKur() {
       telefon: $("alanTelefon").value.trim(),
       poliklinik: $("alanPoliklinik").value.trim(),
       hekim: $("alanHekim").value.trim(),
-      islemTarihi: taslak.hasta.islemTarihi
+      islemTarihi: taslak.hasta.islemTarihi,
+      muayeneZamani: taslak.hasta.muayeneZamani
     },
     katilimci: anketVar ? { ...taslak.katilimci } : { tur: null, cinsiyet: null, yasGrubu: null, egitim: null },
     cevaplar: anketVar ? cevaplar : {},
@@ -469,6 +476,73 @@ async function klasorSecdir() {
   }
 }
 
+// ── Ay hedefi ──────────────────────────────────────────────
+
+const hedefAnahtari = (ay) => `hedef:${String(ay).slice(0, 7)}`;
+
+async function gelenHastaOku(ay) {
+  const anahtar = hedefAnahtari(ay);
+  const kutu = await chrome.storage.local.get(anahtar);
+  const deger = kutu[anahtar];
+  return Number.isFinite(deger) ? deger : null;
+}
+
+const arananHedefi = (gelenHasta) =>
+  gelenHasta ? Math.ceil((gelenHasta * hedefOran) / 100) : null;
+
+/** Üst çubuktaki "Bu ay" rozeti: kaç kişi arandı, hedef neyse ona göre. */
+async function ayRozetiniTazele() {
+  const ay = kayitDeposu.buAyinKlasoru();
+  const ozet = await kayitDeposu.ayOzeti(ay);
+  const gereken = arananHedefi(await gelenHastaOku(ay));
+
+  const el = $("rozetAy");
+  if (!ozet.okundu) {
+    rozet(el, "Bu ay: —", null);
+    el.title = "Ay klasörü okunamadı";
+    return;
+  }
+  if (gereken) {
+    rozet(el, `Bu ay: ${ozet.aranan}/${gereken} kişi`,
+          ozet.aranan >= gereken ? "iyi" : "uyari");
+    el.title = `${ozet.aranan} kişi arandı, ${ozet.ulasilan} kişiye ulaşıldı · ` +
+               `hedef ${gereken} kişi (aylık hastanın %${hedefOran}'i)`;
+  } else {
+    rozet(el, `Bu ay: ${ozet.aranan} kişi`, null);
+    el.title = `${ozet.aranan} kişi arandı, ${ozet.ulasilan} kişiye ulaşıldı · ` +
+               "hedef için Rapor sekmesine gelen hasta sayısını girin";
+  }
+}
+
+/** Rapor sekmesindeki hedef kutusu ve altındaki açıklama. */
+async function hedefKutusunuTazele() {
+  const ay = $("aySecim").value;
+  const not = $("hedefNot");
+  const kutu = $("alanGelenHasta");
+
+  if (!ay) {
+    kutu.value = "";
+    kutu.disabled = true;
+    not.textContent = "";
+    return;
+  }
+  kutu.disabled = false;
+  const gelenHasta = await gelenHastaOku(ay);
+  kutu.value = gelenHasta ?? "";
+
+  const gereken = arananHedefi(gelenHasta);
+  if (!gereken) {
+    not.textContent = `Girilirse bu sayının %${hedefOran}'i hedef olarak alınır ` +
+                      "ve rapora yazılır.";
+    return;
+  }
+  const ozet = await kayitDeposu.ayOzeti(ay);
+  not.textContent =
+    `Hedef ${gereken} kişi (%${hedefOran}). Bu ay ${ozet.aranan} kişi arandı, ` +
+    `${ozet.ulasilan} kişiye ulaşıldı.` +
+    (ozet.aranan >= gereken ? " Hedef tamamlandı." : ` ${gereken - ozet.aranan} kişi kaldı.`);
+}
+
 async function durumuTazele() {
   const durum = await kayitDeposu.izinDurumu();
   const el = $("rozetKlasor");
@@ -502,6 +576,8 @@ async function durumuTazele() {
       await durumuTazele();
     };
   }
+
+  await ayRozetiniTazele();
 
   const bekleyen = await kayitDeposu.kuyrukSayisi();
   const kuyrukRozeti = $("rozetKuyruk");
@@ -548,6 +624,7 @@ async function aylariYukle() {
     secim.value = oncekiSecim;
   }
   $("btnRapor").disabled = !aylar.length;
+  await hedefKutusunuTazele();
 }
 
 async function raporCikar() {
@@ -563,7 +640,9 @@ async function raporCikar() {
       try { onceki = (await kayitDeposu.ayKayitlariniOku(oncekiAd)).kayitlar; } catch { onceki = null; }
     }
 
-    const html = raporUret(ay, kayitlar, onceki);
+    const gelenHasta = await gelenHastaOku(ay);
+    const html = raporUret(ay, kayitlar, onceki,
+                           gelenHasta ? { gelenHasta, oran: hedefOran } : null);
     const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
     await chrome.tabs.create({ url });
 
@@ -574,6 +653,92 @@ async function raporCikar() {
   } catch (e) {
     durum.textContent = `Rapor üretilemedi: ${e.message ?? e}`;
   }
+}
+
+// ── Son gelişte yapılan işlemler ───────────────────────────
+
+/* Anketçi hastayı aramadan önce ne yapıldığına bakıyor; bu yüzden pencere
+ * hasta kartından, görüşme başlamadan açılıyor. Veri yalnızca gösteriliyor:
+ * sağlık bilgisi ne kayda ne PDF'e yazılıyor. */
+
+function islemTablosu(satirlar) {
+  if (!satirlar.length) return '<p class="bos">İşlem kaydı bulunamadı.</p>';
+  const hucre = (d, sinif = "") =>
+    `<td${sinif ? ` class="${sinif}"` : ""}>${String(d ?? "—").replace(/[<&]/g, "")}</td>`;
+  const govde = satirlar.map((s) => `<tr>
+    ${hucre(s.ad)}${hucre(s.dis || "—", "orta")}${hucre(s.hekim)}
+  </tr>`).join("");
+  return `<table><thead><tr>
+    <th>İşlem</th><th class="orta">Diş</th><th>Hekim</th>
+  </tr></thead><tbody>${govde}</tbody></table>`;
+}
+
+function islemleriGoster(veri) {
+  const govde = $("islemlerGovde");
+  const baslik = $("islemlerBaslik");
+
+  if (!veri || !veri.yuklu) {
+    baslik.textContent = "Yapılan işlemler";
+    govde.innerHTML = '<p class="bos"></p>';
+    govde.querySelector(".bos").textContent =
+      "İşlem listesi HBYS'de açık değil. Hastayı Tedavi-Plan sekmesinde açıp " +
+      "yeniden deneyin.";
+    $("islemler").classList.remove("gizli");
+    return;
+  }
+
+  const secili = taslak.hasta.hastaId;
+  if (secili && veri.hastaId && String(veri.hastaId) !== String(secili)) {
+    baslik.textContent = "Yapılan işlemler";
+    govde.innerHTML = '<p class="bos"></p>';
+    govde.querySelector(".bos").textContent =
+      "HBYS'de başka bir hastanın işlemleri açık. Anket yaptığınız hastayı " +
+      "Tedavi-Plan sekmesinde açıp yeniden deneyin.";
+    $("islemler").classList.remove("gizli");
+    return;
+  }
+
+  // Tarihe göre grupla, en yeni gün başta
+  const gruplar = new Map();
+  for (const s of veri.satirlar) {
+    const gun = tarihGoster(s.tarih) || "Tarihsiz";
+    if (!gruplar.has(gun)) gruplar.set(gun, []);
+    gruplar.get(gun).push(s);
+  }
+  const gunler = [...gruplar.keys()].sort((a, b) => {
+    const p = (g) => g.split(".").reverse().join("");
+    return p(b).localeCompare(p(a));
+  });
+
+  baslik.textContent = veri.basvuruyaGore
+    ? "Son gelişinde yapılan işlemler"
+    : "Yapılan işlemler (tüm gelişler)";
+
+  govde.innerHTML = gunler.map((gun) =>
+    `<div class="grup"><h4></h4>${islemTablosu(gruplar.get(gun))}</div>`).join("")
+    || '<p class="bos">İşlem kaydı bulunamadı.</p>';
+  govde.querySelectorAll(".grup h4").forEach((h, n) => {
+    h.textContent = `${gunler[n]} · ${gruplar.get(gunler[n]).length} işlem`;
+  });
+
+  if (!veri.basvuruyaGore && veri.satirlar.length) {
+    const not = document.createElement("p");
+    not.className = "not";
+    not.textContent =
+      "Bu anketin ait olduğu başvuruya ait işlem ayırt edilemedi; hastanın " +
+      "tüm işlemleri listelendi.";
+    govde.append(not);
+  }
+
+  $("islemler").classList.remove("gizli");
+}
+
+function islemleriIste() {
+  if (!taslak.hasta.hastaId) {
+    uyar("uyari", "Hasta seçilmedi", "Önce HBYS'den bir hasta seçin.");
+    return;
+  }
+  hbysYolla("islemler", { muracaatId: hbysHastasi?.muracaatId ?? null });
 }
 
 // ── Anket listesi ──────────────────────────────────────────
@@ -705,6 +870,32 @@ function baglaniklariKur() {
 
   $("btnRapor").addEventListener("click", raporCikar);
   $("btnAylariYenile").addEventListener("click", aylariYukle);
+  $("btnIslemler").addEventListener("click", islemleriIste);
+  $("btnIslemlerKapat").addEventListener("click",
+    () => $("islemler").classList.add("gizli"));
+
+  $("aySecim").addEventListener("change", hedefKutusunuTazele);
+  $("alanGelenHasta").addEventListener("change", async () => {
+    const ay = $("aySecim").value;
+    if (!ay) return;
+    const ham = $("alanGelenHasta").value.trim();
+    const sayi = ham === "" ? null : Math.max(0, Math.round(Number(ham)));
+    if (ham !== "" && !Number.isFinite(sayi)) return;
+    if (sayi === null) await chrome.storage.local.remove(hedefAnahtari(ay));
+    else await chrome.storage.local.set({ [hedefAnahtari(ay)]: sayi });
+    await hedefKutusunuTazele();
+    await ayRozetiniTazele();
+  });
+
+  $("alanHedefOran").addEventListener("change", async () => {
+    const deger = Number($("alanHedefOran").value);
+    hedefOran = Number.isFinite(deger) && deger > 0 ? deger : 1;
+    $("alanHedefOran").value = hedefOran;
+    await chrome.storage.local.set({ hedefOran });
+    await hedefKutusunuTazele();
+    await ayRozetiniTazele();
+  });
+
   $("btnListe").addEventListener("click", listeyiAc);
   $("btnListeCsv").addEventListener("click", listeyiIndir);
 
@@ -718,9 +909,12 @@ async function baslat() {
   sorulariKur();
   baglaniklariKur();
 
-  const ayarlar = await chrome.storage.local.get("uygulayan");
+  const ayarlar = await chrome.storage.local.get(["uygulayan", "hedefOran"]);
   uygulayan = ayarlar.uygulayan ?? "";
   $("alanUygulayan").value = uygulayan;
+  hedefOran = Number.isFinite(ayarlar.hedefOran) && ayarlar.hedefOran > 0
+    ? ayarlar.hedefOran : 1;
+  $("alanHedefOran").value = hedefOran;
 
   ciz();
   await durumuTazele();

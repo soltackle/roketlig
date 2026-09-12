@@ -298,6 +298,37 @@ export async function ayKayitlariniOku(ayEtiketi) {
 }
 
 /**
+ * Bir ayın özeti: kaç kişi arandı, kaçına ulaşıldı.
+ *
+ * Sayım hasta üzerinden yapılır, arama üzerinden değil: aynı hastayı üç kez
+ * aramak "üç kişi arandı" demek değildir. Kaynak klasördeki veri dosyalarıdır,
+ * böylece iki ayrı bilgisayardan yapılan anketler de sayıya girer.
+ */
+export async function ayOzeti(ayEtiketi) {
+  let kayitlar = [];
+  try {
+    ({ kayitlar } = await ayKayitlariniOku(ayEtiketi));
+  } catch {
+    return { okundu: false, aranan: 0, ulasilan: 0, kayit: 0 };
+  }
+
+  const aranan = new Set();
+  const ulasilan = new Set();
+  for (const k of kayitlar) {
+    const kimlik = k.hasta?.hastaId ?? k.anketId;
+    if (kimlik === undefined || kimlik === null) continue;
+    aranan.add(String(kimlik));
+    if (k.gorusmeSonucu === "ulasildi") ulasilan.add(String(kimlik));
+  }
+  return { okundu: true, aranan: aranan.size, ulasilan: ulasilan.size, kayit: kayitlar.length };
+}
+
+/** Bugünün ayına karşılık gelen klasör adı. */
+export function buAyinKlasoru(tarih = new Date()) {
+  return ayKlasoruAdi(tarih);
+}
+
+/**
  * Ana klasördeki ay klasörlerini listeler.
  *
  * Önce klasörü gezer. Gezme hiçbir şey vermezse son GERIYE_BAK ayın adını tek

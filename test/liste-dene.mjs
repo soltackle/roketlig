@@ -5,8 +5,10 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
 const kok = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "eklenti");
-const { listeHtml, listeCsv, listeSatirlari, SUTUNLAR, tarihGoster } =
+const { listeHtml, listeCsv, listeSatirlari, SUTUNLAR } =
   await import(path.join(kok, "motor/liste.js"));
+const { tarihGoster, saatGoster, sureGoster, saatFarki } =
+  await import(path.join(kok, "motor/zaman.js"));
 
 const kayit = (n, ek = {}) => ({
   surum: 1, formSurum: "HHD.FR.19 Rev.01", anketId: `a${n}`,
@@ -17,7 +19,8 @@ const kayit = (n, ek = {}) => ({
   hasta: {
     hastaId: 4000 + n, adSoyad: `ŞÜKRÜ DOĞAN ${n}`, tcKimlikNo: `1234567890${n}`,
     telefon: "0532 415 66 08", poliklinik: "Ağız, Diş ve Çene Cerrahisi",
-    hekim: "Dt. Ayşe DEMİR", islemTarihi: "2026-09-10T09:15:00"
+    hekim: "Dt. Ayşe DEMİR", islemTarihi: "2026-09-10T09:15:00",
+    muayeneZamani: "2026-09-10T09:15:00"
   },
   katilimci: { tur: "Hasta", cinsiyet: "Erkek", yasGrubu: "50-59", egitim: "Lise" },
   cevaplar: { 1: 4, 2: 5, 3: 4, 4: 5, 5: 4, 6: 5, 7: 4, 8: 4 },
@@ -29,7 +32,7 @@ const kayit = (n, ek = {}) => ({
 {
   assert.deepEqual(SUTUNLAR.map((s) => s.baslik), [
     "Sıra", "Ad Soyad", "T.C. Kimlik No", "Telefon", "Başvurduğu Poliklinik",
-    "Hekim", "Muayene Tarihi", "Aranma Tarihi", "Aranma Saati",
+    "Hekim", "Muayene Tarihi", "Muayene Saati", "Aranma Tarihi", "Aranma Saati",
     "Görüşme Sonucu", "Anketi Uygulayan"
   ]);
   console.log("✓ sütunlar istenen sırada");
@@ -42,7 +45,21 @@ const kayit = (n, ek = {}) => ({
   assert.equal(tarihGoster("10.09.2026 09:15"), "10.09.2026", "saat kısmı atılmalı");
   assert.equal(tarihGoster(""), "", "boş alan boş kalmalı");
   assert.equal(tarihGoster("bilinmeyen"), "bilinmeyen", "tanınmayan değer bozulmamalı");
-  console.log("✓ tarih biçimleri doğru");
+  assert.equal(saatGoster("2026-09-10T09:15:00"), "09:15", "ISO saat çevrilmeli");
+  assert.equal(saatGoster("10.09.2026 09:15"), "09:15", "hazır biçimden saat");
+  assert.equal(saatGoster("10.09.2026"), "", "saat yoksa gece yarısı gösterilmemeli");
+  console.log("✓ tarih ve saat biçimleri doğru");
+}
+
+// --- süre hesabı ----------------------------------------------------------
+{
+  assert.equal(saatFarki("2026-09-10T09:00:00", "2026-09-11T14:30:00"), 29.5);
+  assert.equal(saatFarki("", "2026-09-11T14:30:00"), null, "eksik uç null vermeli");
+  assert.equal(sureGoster(29.5), "1 gün 6 saat");
+  assert.equal(sureGoster(2.5), "2 saat 30 dakika");
+  assert.equal(sureGoster(0.5), "30 dakika");
+  assert.equal(sureGoster(null), "—");
+  console.log("✓ dönüş süresi hesabı doğru");
 }
 
 // --- satırlar -------------------------------------------------------------
@@ -59,15 +76,16 @@ const kayit = (n, ek = {}) => ({
   assert.equal(satirlar[0][1], "ŞÜKRÜ DOĞAN 1", "en erken arama başta olmalı");
   assert.equal(satirlar[0][2], "12345678901");
   assert.equal(satirlar[0][6], "10.09.2026", "muayene tarihi");
-  assert.equal(satirlar[0][7], "11.09.2026", "aranma tarihi");
-  assert.equal(satirlar[0][8], "14:31", "aranma saati");
-  assert.equal(satirlar[2][9], "Açmadı", "ulaşılamayan da listede");
+  assert.equal(satirlar[0][7], "09:15", "muayene saati");
+  assert.equal(satirlar[0][8], "11.09.2026", "aranma tarihi");
+  assert.equal(satirlar[0][9], "14:31", "aranma saati");
+  assert.equal(satirlar[2][10], "Açmadı", "ulaşılamayan da listede");
   assert.equal(satirlar[3][2], "", "T.C. yoksa boş");
   console.log("✓ satırlar ve sıralama doğru");
 
   const sadece = listeSatirlari(kayitlar, true);
   assert.equal(sadece.length, 3, "yalnızca ulaşılanlar süzülmeli");
-  assert.ok(!sadece.some((s) => s[9] === "Açmadı"));
+  assert.ok(!sadece.some((s) => s[10] === "Açmadı"));
   console.log("✓ 'yalnızca ulaşılanlar' süzgeci çalışıyor");
 }
 

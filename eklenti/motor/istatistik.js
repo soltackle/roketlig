@@ -7,6 +7,7 @@
  */
 
 import { SORULAR, GORUSME_SONUCLARI, puanlanirMi, kapsamDisiMi } from "./sorular.js";
+import { saatFarki } from "./zaman.js";
 
 const cevapAl = (kayit, no) => kayit.cevaplar?.[no] ?? kayit.cevaplar?.[String(no)] ?? null;
 
@@ -63,6 +64,25 @@ export function hesapla(hamKayitlar) {
 
   const arananlar = kayitlar.length;
   const ulasilanlar = anketli.length;
+
+  // Kişi bazlı sayım: aynı hastayı üç kez aramak "üç kişi arandı" değildir.
+  // Kurum hedefi (aylık hasta sayısının %1'i) kişi üzerinden hesaplandığı için
+  // arama sayısı değil bu sayı esas alınır.
+  const kimlik = (k) => String(k.hasta?.hastaId ?? k.anketId ?? "");
+  const arananKisiler = new Set(kayitlar.map(kimlik).filter(Boolean));
+  const ulasilanKisiler = new Set(anketli.map(kimlik).filter(Boolean));
+
+  // Muayeneden anketi yapmaya kadar geçen süre
+  const gecikmeler = anketli
+    .map((k) => saatFarki(k.hasta?.muayeneZamani ?? k.hasta?.islemTarihi, k.zamanDamgasi))
+    .filter((s) => s !== null && s >= 0);
+  const ortalamaDonus = gecikmeler.length
+    ? gecikmeler.reduce((t, s) => t + s, 0) / gecikmeler.length
+    : null;
+  const siraliGecikme = [...gecikmeler].sort((a, b) => a - b);
+  const ortancaDonus = siraliGecikme.length
+    ? siraliGecikme[Math.floor(siraliGecikme.length / 2)]
+    : null;
   const tamamlananlar = anketli.filter((k) =>
     SORULAR.some((s) => cevapAl(k, s.no) !== null)).length;
 
@@ -157,6 +177,12 @@ export function hesapla(hamKayitlar) {
     arananlar,
     ulasilanlar,
     tamamlananlar,
+    arananKisi: arananKisiler.size,
+    ulasilanKisi: ulasilanKisiler.size,
+    kisiUlasilmaOrani: bolum(ulasilanKisiler.size, arananKisiler.size),
+    ortalamaDonus,
+    ortancaDonus,
+    donusOlculen: gecikmeler.length,
     ulasilmaOrani: bolum(ulasilanlar, arananlar),
     tamamlanmaOrani: bolum(tamamlananlar, ulasilanlar),
     sonucDagilimi,

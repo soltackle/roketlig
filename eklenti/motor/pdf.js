@@ -8,6 +8,7 @@ import { PDFDocument, rgb } from "../varliklar/pdf-lib.esm.min.js";
 import fontkit from "../varliklar/fontkit.esm.js";
 import { GEOMETRI } from "./form-geometrisi.js";
 import { SORULAR } from "./sorular.js";
+import { zamanGoster } from "./zaman.js";
 
 const BOS_FORM = "varliklar/HHD.FR.19-bos-form.pdf";
 const YAZI_TIPI = "varliklar/LiberationSerif-Regular.ttf";
@@ -185,8 +186,10 @@ function gorusDevamSayfalari(belge, font, kayit, satirlar) {
       y += satirY;
     }
 
+    const muayene = zamanGoster(kayit.hasta?.muayeneZamani ?? kayit.hasta?.islemTarihi);
     yaz(
-      `Anket tarihi: ${kayit.tarihGosterim || kayit.tarih} · Saat: ${kayit.saat} · ` +
+      (muayene ? `Muayene: ${muayene} · ` : "") +
+      `Anket: ${kayit.tarihGosterim || kayit.tarih} ${kayit.saat} · ` +
       `Anketi uygulayan: ${kayit.uygulayan || "—"}`,
       KENAR, damga.taban_y, damga.punto
     );
@@ -273,13 +276,25 @@ export async function anketiIsaretle(kayit) {
     ? []
     : gorusuYaz(sayfa, yukseklik, kayit.hastaGorusu.trim(), font, kayit.tetkikYok);
 
-  // 6) Onay damgası
+  // 6) Onay damgası. Muayene ile anket zamanı yan yana durur; anketin hangi
+  //    ziyarete ait olduğu formun kendisinden okunabilsin diye.
   const d = alanlar.damga_satiri;
-  yaz(
-    `Anket tarihi: ${kayit.tarihGosterim || kayit.tarih} · Saat: ${kayit.saat} · ` +
-    `Anketi uygulayan: ${kayit.uygulayan || "—"}`,
-    d.x, d.taban_y, d.punto, SIYAH
-  );
+  const muayene = zamanGoster(kayit.hasta?.muayeneZamani ?? kayit.hasta?.islemTarihi);
+  const parcalar = [
+    muayene ? `Muayene: ${muayene}` : null,
+    `Anket: ${kayit.tarihGosterim || kayit.tarih} ${kayit.saat}`,
+    `Anketi uygulayan: ${kayit.uygulayan || "—"}`
+  ].filter(Boolean);
+
+  const tek = parcalar.join(" · ");
+  const enGenis = GEOMETRI.sayfa.genislik - d.x - 14;
+  if (font.widthOfTextAtSize(tek, d.punto) <= enGenis) {
+    yaz(tek, d.x, d.taban_y, d.punto, SIYAH);
+  } else {
+    // Tek satıra sığmıyor: tabloyla sayfa sonu arasındaki boşluk iki satır alır
+    yaz(parcalar.slice(0, -1).join(" · "), d.x, d.taban_y - 5.5, d.punto, SIYAH);
+    yaz(parcalar.at(-1), d.x, d.taban_y + 5.5, d.punto, SIYAH);
+  }
 
   if (tasan.length) gorusDevamSayfalari(belge, font, kayit, tasan);
 
