@@ -70,8 +70,13 @@ yazılır; panelde bekleyen kayıt sayısı görünür.
 
 **Son gelişinde yapılan işlemler.** Aramadan önce hasta kartından açılır:
 hastaya hangi gün ne yapıldığı, hangi dişe, hangi hekim tarafından. Yalnızca
-gösterilir — sağlık bilgisi ne veri kaydına ne PDF'e yazılır. Liste HBYS'den
-okunduğu için hastanın Tedavi-Plan sekmesinde açık olması gerekir.
+gösterilir — sağlık bilgisi ne veri kaydına ne PDF'e yazılır.
+
+Varsayılan olarak eklenti yalnızca ekranda açık olanı okur, yani hastanın
+Tedavi-Plan sekmesinde açık olması gerekir. Ayarlardaki **"İşlemleri HBYS'den
+doğrudan getir"** tiki açılırsa eklenti tek bir okuma isteğiyle kendisi getirir
+ve hastayı açmaya gerek kalmaz. Çalışmazsa kendiliğinden eski yönteme döner ve
+sebebini söyler; denemesi risksizdir.
 
 **Aylık hedef.** Rapor sekmesine o ay kuruma gelen hasta sayısı elle girilir;
 eklenti bunun yüzdesini (varsayılan %1, Ayarlar'dan değiştirilir) hedef sayar.

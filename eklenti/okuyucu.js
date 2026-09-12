@@ -1,8 +1,12 @@
 /* HBYS sayfasının kendi JavaScript bağlamında (MAIN world) çalışır.
  *
  * Tek işi okumak: App.* nesnelerinden hasta bilgisini alıp köprüye yollar.
- * Sayfaya hiçbir şey yazmaz, hiçbir ağ isteği atmaz. HBYS'nin kendi
- * yüklediği store dışında bir kaynağa dokunmaz.
+ * Sayfaya hiçbir şey yazmaz.
+ *
+ * Varsayılanı, HBYS'nin kendi yüklediği store dışına çıkmamaktır: sunucuya
+ * hiçbir istek gitmez. Tek istisnası, Ayarlar'dan açıkça açılan "işlemleri
+ * doğrudan getir" seçeneği — o zaman yapılan işlemler için sayfanın kendi
+ * Ext.Ajax'ıyla tek bir okuma isteği atılır. Kapalıyken o kod hiç çalışmaz.
  */
 (() => {
   "use strict";
@@ -34,9 +38,13 @@
 
   // --- Kayıttan veri çıkarma ----------------------------------------------
 
+  /** Hem ExtJS kaydından hem de düz JSON nesnesinden alan okur. */
   const al = (kayit, alan) => {
     try {
-      const d = kayit && (kayit.get ? kayit.get(alan) : kayit.data && kayit.data[alan]);
+      if (!kayit) return null;
+      const d = kayit.get ? kayit.get(alan)
+              : kayit.data ? kayit.data[alan]
+              : kayit[alan];
       return d === undefined || d === null || d === "" ? null : d;
     } catch { return null; }
   };
@@ -107,10 +115,87 @@
   // --- Yapılan işlemler ----------------------------------------------------
 
   /** Tedavi-Plan sekmesindeki işlem ızgarasının o an hangi hastaya ait olduğu. */
-  function yuklüHastaId() {
+  function yukluHastaId() {
     try {
       return typeof window.getHastaId === "function" ? window.getHastaId() : null;
     } catch { return null; }
+  }
+
+  const TETKIK_UCU = "/Poliklinik/HastaTetkikleriniGetir";
+
+  const satirCikar = (k) => ({
+    ad: al(k, "TETKIK_ADI"),
+    kod: al(k, "TETKIK_KODU"),
+    dis: al(k, "DIS_KODU"),
+    tarih: al(k, "TARIHI"),
+    hekim: al(k, "DOKTOR_ADI"),
+    muracaatId: al(k, "MURACAAT_ID"),
+    kayitZamani: al(k, "KAYIT_ZAMANI")
+  });
+
+  /**
+   * İşlemleri HBYS'ye tek bir okuma isteği atarak getirir.
+   *
+   * Sayfanın kendi Ext.Ajax'ı kullanılıyor: oturum, başlıklar ve adres
+   * HBYS'nin kendi isteğiyle aynı. Ayarlardan açık değilse hiç çağrılmaz —
+   * eklentinin varsayılanı ek istek atmamaktır.
+   */
+  function islemleriSorgula(hastaId) {
+    return new Promise((tamam, hata) => {
+      const ajax = window.Ext && window.Ext.Ajax;
+      if (!ajax || typeof ajax.request !== "function") {
+        return hata(new Error("Ext.Ajax bulunamadı"));
+      }
+      let bitti = false;
+      const sure = setTimeout(() => {
+        if (!bitti) { bitti = true; hata(new Error("zaman aşımı")); }
+      }, 15000);
+
+      const cozumle = (metin) => {
+        const veri = JSON.parse(metin);
+        const dizi = Array.isArray(veri) ? veri
+                   : Array.isArray(veri?.data) ? veri.data
+                   : Array.isArray(veri?.result) ? veri.result
+                   : null;
+        if (!dizi) throw new Error("beklenmeyen cevap biçimi");
+        return dizi.map(satirCikar);
+      };
+
+      try {
+        ajax.request({
+          url: TETKIK_UCU,
+          method: "GET",
+          params: { hastaId, hastaGelisId: 0 },
+          success: (cevap) => {
+            if (bitti) return;
+            bitti = true; clearTimeout(sure);
+            try { tamam(cozumle(cevap.responseText)); }
+            catch (e) { hata(e); }
+          },
+          failure: (cevap) => {
+            if (bitti) return;
+            bitti = true; clearTimeout(sure);
+            hata(new Error(`sunucu ${cevap && cevap.status ? cevap.status : "yanıt vermedi"}`));
+          }
+        });
+      } catch (e) {
+        if (!bitti) { bitti = true; clearTimeout(sure); hata(e); }
+      }
+    });
+  }
+
+  /** Ham satırları anketin ait olduğu başvuruya göre ayıklar. */
+  function basvuruyaGoreAyikla(satirlar, muracaatId) {
+    const hedef = muracaatId === undefined || muracaatId === null
+      ? null : String(muracaatId);
+    const ayni = hedef
+      ? satirlar.filter((s) => String(s.muracaatId) === hedef)
+      : [];
+    return {
+      toplam: satirlar.length,
+      satirlar: ayni.length ? ayni : satirlar,
+      basvuruyaGore: ayni.length > 0
+    };
   }
 
   /**
@@ -120,34 +205,16 @@
   function islemler(muracaatId) {
     const g = window.App && window.App.GridHastaTetkikDetay;
     const store = g && g.getStore && g.getStore();
-    if (!store) return { yuklu: false, hastaId: null, satirlar: [] };
+    if (!store) return { yuklu: false, kaynak: "izgara", hastaId: null, satirlar: [] };
 
     const satirlar = [];
-    store.each((k) => {
-      satirlar.push({
-        ad: al(k, "TETKIK_ADI"),
-        kod: al(k, "TETKIK_KODU"),
-        dis: al(k, "DIS_KODU"),
-        tarih: al(k, "TARIHI"),
-        hekim: al(k, "DOKTOR_ADI"),
-        muracaatId: al(k, "MURACAAT_ID"),
-        kayitZamani: al(k, "KAYIT_ZAMANI")
-      });
-    });
-
-    // Anket belirli bir başvuruya ait; o başvurunun işlemlerini ayır.
-    const hedef = muracaatId === undefined || muracaatId === null
-      ? null : String(muracaatId);
-    const ayniBasvuru = hedef
-      ? satirlar.filter((s) => String(s.muracaatId) === hedef)
-      : [];
+    store.each((k) => { satirlar.push(satirCikar(k)); });
 
     return {
       yuklu: true,
-      hastaId: yuklüHastaId(),
-      toplam: satirlar.length,
-      satirlar: ayniBasvuru.length ? ayniBasvuru : satirlar,
-      basvuruyaGore: ayniBasvuru.length > 0
+      kaynak: "izgara",
+      hastaId: yukluHastaId(),
+      ...basvuruyaGoreAyikla(satirlar, muracaatId)
     };
   }
 
@@ -249,7 +316,22 @@
     }
 
     if (m.tip === "islemler") {
-      return yolla("islemler", islemler(m.veri && m.veri.muracaatId));
+      const istek = m.veri || {};
+      if (!istek.dogrudan) {
+        return yolla("islemler", islemler(istek.muracaatId));
+      }
+      // Ayarlardan açıkmış: HBYS'ye tek okuma isteği. Başarısız olursa
+      // sessizce yüklü ızgaraya düşer, panel hangisinin kullanıldığını söyler.
+      islemleriSorgula(istek.hastaId)
+        .then((satirlar) => yolla("islemler", {
+          yuklu: true, kaynak: "sorgu", hastaId: istek.hastaId,
+          ...basvuruyaGoreAyikla(satirlar, istek.muracaatId)
+        }))
+        .catch((e) => yolla("islemler", {
+          ...islemler(istek.muracaatId),
+          sorguHatasi: String(e && e.message ? e.message : e)
+        }));
+      return undefined;
     }
 
     if (m.tip === "rastgele") {

@@ -179,6 +179,21 @@
   </fieldset>
 
   <fieldset>
+    <legend>Yapılan işlemler</legend>
+    <label class="satir-ici">
+      <input id="cbDogrudanIslem" type="checkbox">
+      İşlemleri HBYS'den doğrudan getir
+    </label>
+    <p class="not">
+      Kapalıyken eklenti yalnızca ekranda açık olanı okur; işlemleri görmek için
+      hastanın Tedavi-Plan sekmesinde açık olması gerekir. Açıkken HBYS'ye tek
+      bir okuma isteği atar ve hasta orada açık olmasa da işlemler gelir.
+      Çalışmazsa kendiliğinden eski yönteme düşer ve pencerede bunu söyler —
+      denemesi risksizdir.
+    </p>
+  </fieldset>
+
+  <fieldset>
     <legend>Hedef</legend>
     <label>Aranması gereken hasta oranı (%)
       <input id="alanHedefOran" type="number" min="0" max="100" step="0.1"

@@ -34,6 +34,7 @@ let etkinSoru = 1;
 let uygulayan = "";
 let onizlemeUrl = null;
 let hedefOran = 1;                 // aylık hasta sayısının aranacak yüzdesi
+let dogrudanIslem = false;         // işlemleri HBYS'ye sorarak getir (varsayılan kapalı)
 
 // ── Yardımcılar ────────────────────────────────────────────
 
@@ -677,17 +678,25 @@ function islemleriGoster(veri) {
   const govde = $("islemlerGovde");
   const baslik = $("islemlerBaslik");
 
+  const sorguDustu = veri && veri.sorguHatasi
+    ? `Doğrudan sorgu çalışmadı (${veri.sorguHatasi}); ekranda açık olan liste ` +
+      "kullanıldı. Ayarlardan kapatabilirsiniz."
+    : null;
+
   if (!veri || !veri.yuklu) {
     baslik.textContent = "Yapılan işlemler";
     govde.innerHTML = '<p class="bos"></p>';
-    govde.querySelector(".bos").textContent =
-      "İşlem listesi HBYS'de açık değil. Hastayı Tedavi-Plan sekmesinde açıp " +
-      "yeniden deneyin.";
+    govde.querySelector(".bos").textContent = sorguDustu
+      ? `${sorguDustu} Ekranda da açık değil: hastayı Tedavi-Plan sekmesinde açın.`
+      : "İşlem listesi HBYS'de açık değil. Hastayı Tedavi-Plan sekmesinde açıp " +
+        "yeniden deneyin.";
     $("islemler").classList.remove("gizli");
     return;
   }
 
-  const secili = taslak.hasta.hastaId;
+  // Doğrudan sorguda kayıtlar zaten istenen hastaya ait; ızgarada değilse
+  // ekranda başka hasta açık olabilir.
+  const secili = veri.kaynak === "sorgu" ? null : taslak.hasta.hastaId;
   if (secili && veri.hastaId && String(veri.hastaId) !== String(secili)) {
     baslik.textContent = "Yapılan işlemler";
     govde.innerHTML = '<p class="bos"></p>';
@@ -730,6 +739,18 @@ function islemleriGoster(veri) {
     govde.append(not);
   }
 
+  if (sorguDustu) {
+    const not = document.createElement("p");
+    not.className = "not uyari";
+    not.textContent = sorguDustu;
+    govde.prepend(not);
+  } else if (veri.kaynak === "sorgu") {
+    const not = document.createElement("p");
+    not.className = "not";
+    not.textContent = "HBYS'den doğrudan getirildi.";
+    govde.append(not);
+  }
+
   $("islemler").classList.remove("gizli");
 }
 
@@ -738,7 +759,11 @@ function islemleriIste() {
     uyar("uyari", "Hasta seçilmedi", "Önce HBYS'den bir hasta seçin.");
     return;
   }
-  hbysYolla("islemler", { muracaatId: hbysHastasi?.muracaatId ?? null });
+  hbysYolla("islemler", {
+    hastaId: taslak.hasta.hastaId,
+    muracaatId: hbysHastasi?.muracaatId ?? null,
+    dogrudan: dogrudanIslem
+  });
 }
 
 // ── Anket listesi ──────────────────────────────────────────
@@ -887,10 +912,17 @@ function baglaniklariKur() {
     await ayRozetiniTazele();
   });
 
+  $("cbDogrudanIslem").addEventListener("change", async () => {
+    dogrudanIslem = $("cbDogrudanIslem").checked;
+    await chrome.storage.local.set({ dogrudanIslem });
+  });
+
   $("alanHedefOran").addEventListener("change", async () => {
     const deger = Number($("alanHedefOran").value);
     hedefOran = Number.isFinite(deger) && deger > 0 ? deger : 1;
     $("alanHedefOran").value = hedefOran;
+  dogrudanIslem = Boolean(ayarlar.dogrudanIslem);
+  $("cbDogrudanIslem").checked = dogrudanIslem;
     await chrome.storage.local.set({ hedefOran });
     await hedefKutusunuTazele();
     await ayRozetiniTazele();
@@ -909,12 +941,15 @@ async function baslat() {
   sorulariKur();
   baglaniklariKur();
 
-  const ayarlar = await chrome.storage.local.get(["uygulayan", "hedefOran"]);
+  const ayarlar = await chrome.storage.local.get(
+    ["uygulayan", "hedefOran", "dogrudanIslem"]);
   uygulayan = ayarlar.uygulayan ?? "";
   $("alanUygulayan").value = uygulayan;
   hedefOran = Number.isFinite(ayarlar.hedefOran) && ayarlar.hedefOran > 0
     ? ayarlar.hedefOran : 1;
   $("alanHedefOran").value = hedefOran;
+  dogrudanIslem = Boolean(ayarlar.dogrudanIslem);
+  $("cbDogrudanIslem").checked = dogrudanIslem;
 
   ciz();
   await durumuTazele();

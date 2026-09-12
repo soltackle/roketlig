@@ -102,9 +102,31 @@ Anketin ait olduğu ziyareti ayırmak için hasta listesi satırındaki
 gruplanıp gösteriliyor.
 
 **Kısıt:** bu ızgara yalnızca hasta Tedavi-Plan sekmesinde açıkken dolu oluyor.
-Eklenti ek istek atmadığı için, hasta orada açık değilse panel bunu söyleyip
-kullanıcıdan açmasını istiyor. `getHastaId()` ile ızgaranın o an hangi hastaya
-ait olduğu doğrulanıyor — başka hastanın işlemleri yanlışlıkla gösterilmiyor.
+Eklenti varsayılan olarak ek istek atmadığı için, hasta orada açık değilse panel
+bunu söyleyip kullanıcıdan açmasını istiyor. `getHastaId()` ile ızgaranın o an
+hangi hastaya ait olduğu doğrulanıyor — başka hastanın işlemleri yanlışlıkla
+gösterilmiyor.
+
+### Doğrudan sorgu (Ayarlar'dan açılır, varsayılan kapalı)
+
+Ayarlardaki "İşlemleri HBYS'den doğrudan getir" tiki açılırsa eklenti hastayı
+Tedavi-Plan'da beklemek yerine tek bir okuma isteği atıyor:
+
+```
+GET /Poliklinik/HastaTetkikleriniGetir?hastaId=<id>&hastaGelisId=0
+```
+
+İstek sayfanın kendi `Ext.Ajax`'ıyla gidiyor: aynı adres, aynı oturum, aynı
+başlıklar — sunucu açısından ızgaranın kendi isteğinden farkı yok. Cevap dizi,
+`data` ya da `result` altında gelebilir; üçü de tanınıyor, tanınmayan biçimde
+hata sayılıyor. 15 saniyede yanıt gelmezse vazgeçiliyor.
+
+Başarısız olan her durumda (istek reddedildi, biçim tanınmadı, zaman aşımı)
+sessizce eski yönteme düşüyor ve pencerede neden düştüğü yazıyor. Tik kapalıyken
+bu kod hiç çalışmıyor.
+
+Bu seçenek denenmeden açılmamalı: HBYS sürümleri arasında uç nokta ve parametre
+değişebiliyor. Hastanede bir kez açıp denemek, sonucunu görmek için yeterli.
 
 Bu veriler **hiçbir yere yazılmıyor**: sağlık bilgisi ne anket kaydına ne PDF'e
 giriyor, yalnızca panelde gösteriliyor.

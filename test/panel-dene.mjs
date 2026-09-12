@@ -100,6 +100,24 @@ try {
   console.log("✓ hedef kutusu ve işlemler düğmesi yerinde");
   await sayfa.locator('.sekme[data-sekme="anket"]').click();
 
+  // Doğrudan sorgu ayarı: varsayılan kapalı, açılınca kalıcı olmalı
+  await sayfa.locator('.sekme[data-sekme="ayarlar"]').click();
+  const kutu = sayfa.locator("#cbDogrudanIslem");
+  assert.ok(await kutu.isVisible(), "doğrudan sorgu tiki Ayarlar'da olmalı");
+  assert.equal(await kutu.isChecked(), false, "varsayılan kapalı olmalı");
+  await kutu.check();
+  await sayfa.reload();
+  await sayfa.waitForSelector("#sorular .soru", { state: "attached" });
+  await sayfa.locator('.sekme[data-sekme="ayarlar"]').click();
+  assert.equal(await sayfa.locator("#cbDogrudanIslem").isChecked(), true,
+    "tik yeniden açılışta hatırlanmalı");
+  await sayfa.locator("#cbDogrudanIslem").uncheck();
+  console.log("✓ doğrudan sorgu ayarı kapalı geliyor ve hatırlanıyor");
+  await sayfa.locator('.sekme[data-sekme="anket"]').click();
+  // Yeniden yükleme formu sıfırladı; kalan sınamalar için gövdeyi tekrar aç
+  await sayfa.locator("#sonucSecim .secim", { hasText: "Ulaşıldı" }).click();
+  await sayfa.waitForSelector("#anketGovde:not(.gizli)");
+
   // Hasta seçilmeden işlemler istenirse uyarmalı
   await sayfa.locator("#btnIslemler").click();
   await sayfa.waitForSelector("#uyariAlani .uyari-kutu");
