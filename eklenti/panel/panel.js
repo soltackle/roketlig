@@ -11,8 +11,8 @@ import { anketiIsaretle } from "../motor/pdf.js";
 import * as kayitDeposu from "../motor/kayit.js";
 import { raporUret, oncekiAyKlasoru, donemEtiketi,
          BOLUMLER, VARSAYILAN_BOLUMLER } from "../motor/rapor.js";
-import { eslemeOku, eslemeYaz, hekimAnahtari, kayitlariEsle,
-         eksikHekimler, poliklinikAdlari } from "../motor/hekimler.js";
+import { eslemeOku, eslemeYaz, hekimAnahtari, kayitlariEsle, eksikHekimler,
+         poliklinikAdlari, poliklinikBul, tariheCevir } from "../motor/hekimler.js";
 import { listeHtml, listeCsv } from "../motor/liste.js";
 import { tarihGoster, zamanGoster } from "../motor/zaman.js";
 
@@ -234,8 +234,9 @@ function ciz() {
 
 /** Poliklinik: önce elle girilen hekim eşlemesi, sonra HBYS'nin birim tahmini. */
 function poliklinikCoz(hasta) {
-  const anahtar = hekimAnahtari(hasta?.hekim);
-  return (anahtar && hekimEslemesi[anahtar]) || hasta?.poliklinik || null;
+  return poliklinikBul(hekimEslemesi, hasta?.hekim,
+                       hasta?.muayeneZamani ?? hasta?.islemTarihi)
+      || hasta?.poliklinik || null;
 }
 
 function hbysOnerileriniUygula() {
@@ -277,7 +278,8 @@ async function hastayiAl(hasta, kaynak = "hbys") {
     islemTarihi: hasta.islemTarihi ?? null,
     muayeneZamani: hasta.muayeneZamani ?? hasta.islemTarihi ?? null,
     poliklinikOneri: Boolean(hasta.poliklinik) &&
-                     !hekimEslemesi[hekimAnahtari(hasta.hekim)]
+                     !poliklinikBul(hekimEslemesi, hasta.hekim,
+                                    hasta.muayeneZamani ?? hasta.islemTarihi)
   };
   $("alanAd").value = taslak.hasta.adSoyad;
   $("alanTc").value = taslak.hasta.tcKimlikNo;
@@ -489,6 +491,11 @@ async function klasorSecdir() {
   }
 }
 
+/** Adı girilmeden yapılan anket damgada imzasız kalır; uyarı onun için. */
+function uygulayanUyarisiniTazele() {
+  $("uygulayanUyari").classList.toggle("gizli", Boolean(uygulayan));
+}
+
 // ── Rapor bölümleri ────────────────────────────────────────
 
 function bolumleriCiz() {
@@ -517,66 +524,130 @@ function bolumleriCiz() {
 
 function hekimleriCiz(eksikler = []) {
   const kap = $("hekimListesi");
-  const oneriler = poliklinikAdlari(hekimEslemesi);
   const listeId = "poliklinikOnerileri";
 
   const adlar = new Map();
   for (const anahtar of Object.keys(hekimEslemesi)) adlar.set(anahtar, anahtar);
   for (const e of eksikler) adlar.set(hekimAnahtari(e.ad), e.ad);
 
-  const satirlar = [...adlar.entries()]
+  /** Bir dönem satırı: poliklinik + başlangıç tarihi. */
+  const donemSatiri = (anahtar, dizin, gosterimAd) => {
+    const donem = hekimEslemesi[anahtar][dizin];
+    const satir = document.createElement("div");
+    satir.className = "hekim-satir";
+
+    const poliklinik = document.createElement("input");
+    poliklinik.type = "text";
+    poliklinik.placeholder = "Poliklinik";
+    poliklinik.value = donem.poliklinik ?? "";
+    poliklinik.setAttribute("list", listeId);
+    poliklinik.addEventListener("input", () => {
+      hekimEslemesi[anahtar][dizin].poliklinik = poliklinik.value.trim();
+      basligiTazele(anahtar, gosterimAd);
+    });
+
+    const tarih = document.createElement("input");
+    tarih.type = "text";
+    tarih.className = "tarih";
+    tarih.placeholder = dizin === 0 ? "başından" : "gg.aa.yyyy";
+    tarih.title = "Bu poliklinikte çalışmaya başladığı tarih. Boşsa başından beri.";
+    tarih.value = donem.baslangic ? tarihGoster(donem.baslangic) : "";
+    tarih.addEventListener("change", () => {
+      const cevrilen = tariheCevir(tarih.value.trim());
+      if (tarih.value.trim() && !cevrilen) {
+        tarih.value = donem.baslangic ? tarihGoster(donem.baslangic) : "";
+        $("hekimDurum").textContent = "Tarih anlaşılmadı; gg.aa.yyyy yazın.";
+        return;
+      }
+      hekimEslemesi[anahtar][dizin].baslangic = cevrilen;
+      tarih.value = cevrilen ? tarihGoster(cevrilen) : "";
+    });
+
+    const sil = document.createElement("button");
+    sil.type = "button";
+    sil.className = "sil";
+    sil.title = "Bu dönemi sil";
+    sil.textContent = "×";
+    sil.addEventListener("click", () => {
+      hekimEslemesi[anahtar].splice(dizin, 1);
+      if (!hekimEslemesi[anahtar].length) delete hekimEslemesi[anahtar];
+      hekimleriCiz(eksikler);
+    });
+
+    satir.append(poliklinik, tarih, sil);
+    return satir;
+  };
+
+  const basligiTazele = (anahtar, gosterimAd) => {
+    const ad = kap.querySelector(`[data-hekim="${CSS.escape(anahtar)}"] .ad`);
+    if (!ad) return;
+    const eksik = !(hekimEslemesi[anahtar] ?? []).some((d) => d.poliklinik);
+    ad.className = `ad${eksik ? " eksik" : ""}`;
+    ad.textContent = gosterimAd;
+  };
+
+  const kutular = [...adlar.entries()]
     .sort((a, b) => a[1].localeCompare(b[1], "tr"))
-    .map(([anahtar, gosterim]) => {
-      const satir = document.createElement("div");
-      satir.className = "hekim-satir";
+    .map(([anahtar, gosterimAd]) => {
+      if (!hekimEslemesi[anahtar]) hekimEslemesi[anahtar] = [{ poliklinik: "", baslangic: null }];
 
+      const kutu = document.createElement("div");
+      kutu.className = "hekim-kutu";
+      kutu.dataset.hekim = anahtar;
+
+      const baslik = document.createElement("div");
+      baslik.className = "baslik";
       const ad = document.createElement("span");
-      ad.className = `ad${hekimEslemesi[anahtar] ? "" : " eksik"}`;
-      ad.textContent = gosterim;
-      ad.title = gosterim;
+      ad.className = "ad";
+      ad.textContent = gosterimAd;
+      ad.title = gosterimAd;
 
-      const kutu = document.createElement("input");
-      kutu.type = "text";
-      kutu.placeholder = "Poliklinik";
-      kutu.value = hekimEslemesi[anahtar] ?? "";
-      kutu.setAttribute("list", listeId);
-      kutu.addEventListener("input", () => {
-        const deger = kutu.value.trim();
-        if (deger) hekimEslemesi[anahtar] = deger;
-        else delete hekimEslemesi[anahtar];
-        ad.className = `ad${deger ? "" : " eksik"}`;
+      const donemEkle = document.createElement("button");
+      donemEkle.type = "button";
+      donemEkle.className = "donem-ekle";
+      donemEkle.textContent = "+ dönem";
+      donemEkle.title = "Hekim poliklinik değiştirdiyse yeni dönem ekleyin";
+      donemEkle.addEventListener("click", () => {
+        hekimEslemesi[anahtar].push({ poliklinik: "", baslangic: null });
+        hekimleriCiz(eksikler);
       });
 
-      const sil = document.createElement("button");
-      sil.type = "button";
-      sil.className = "sil";
-      sil.title = "Listeden çıkar";
-      sil.textContent = "×";
-      sil.addEventListener("click", () => {
+      const kaldir = document.createElement("button");
+      kaldir.type = "button";
+      kaldir.className = "sil";
+      kaldir.title = "Hekimi listeden çıkar";
+      kaldir.textContent = "×";
+      kaldir.addEventListener("click", () => {
         delete hekimEslemesi[anahtar];
         hekimleriCiz(eksikler.filter((e) => hekimAnahtari(e.ad) !== anahtar));
       });
 
-      satir.append(ad, kutu, sil);
-      return satir;
+      baslik.append(ad, donemEkle, kaldir);
+      kutu.append(baslik);
+      hekimEslemesi[anahtar].forEach((_, dizin) =>
+        kutu.append(donemSatiri(anahtar, dizin, gosterimAd)));
+
+      const eksik = !hekimEslemesi[anahtar].some((d) => d.poliklinik);
+      ad.className = `ad${eksik ? " eksik" : ""}`;
+      return kutu;
     });
 
   const oneriListesi = document.createElement("datalist");
   oneriListesi.id = listeId;
-  for (const ad of oneriler) {
+  for (const ad of poliklinikAdlari(hekimEslemesi)) {
     const o = document.createElement("option");
     o.value = ad;
     oneriListesi.append(o);
   }
 
-  if (!satirlar.length) {
+  if (!kutular.length) {
     const bos = document.createElement("p");
     bos.className = "not";
     bos.textContent = "Henüz hekim yok. Anket yaptıkça liste kendiliğinden dolar.";
     kap.replaceChildren(bos, oneriListesi);
     return;
   }
-  kap.replaceChildren(...satirlar, oneriListesi);
+  kap.replaceChildren(...kutular, oneriListesi);
 }
 
 /** Kayıtlardaki ve o an seçili hastadaki hekimleri listeye katar. */
@@ -604,6 +675,8 @@ async function hekimleriTara() {
 async function hekimleriKaydet() {
   const durum = $("hekimDurum");
   const sonuc = await eslemeYaz(hekimEslemesi);
+  hekimEslemesi = sonuc.esleme;
+  hekimleriCiz();
   durum.textContent = sonuc.klasoreYazildi
     ? "Eşleme ana klasöre kaydedildi; diğer bilgisayarlar da görecek."
     : "Eşleme bu tarayıcıya kaydedildi. Ana klasöre yazılamadı — klasör seçili " +
@@ -1057,7 +1130,9 @@ function baglaniklariKur() {
     const ad = $("alanYeniHekim").value.trim();
     if (!ad) return;
     const anahtar = hekimAnahtari(ad);
-    if (!(anahtar in hekimEslemesi)) hekimEslemesi[anahtar] = "";
+    if (!(anahtar in hekimEslemesi)) {
+      hekimEslemesi[anahtar] = [{ poliklinik: "", baslangic: null }];
+    }
     $("alanYeniHekim").value = "";
     hekimleriCiz();
   });
@@ -1090,10 +1165,16 @@ function baglaniklariKur() {
   $("btnListe").addEventListener("click", listeyiAc);
   $("btnListeCsv").addEventListener("click", listeyiIndir);
 
-  $("alanUygulayan").addEventListener("input", () => {
-    uygulayan = $("alanUygulayan").value.trim();
+  const uygulayanDegisti = (kaynak) => {
+    uygulayan = kaynak.value.trim();
     chrome.storage.local.set({ uygulayan });
-  });
+    for (const id of ["alanUygulayan", "alanUygulayanKisa"]) {
+      if ($(id) !== kaynak) $(id).value = uygulayan;
+    }
+    uygulayanUyarisiniTazele();
+  };
+  $("alanUygulayan").addEventListener("input", (e) => uygulayanDegisti(e.target));
+  $("alanUygulayanKisa").addEventListener("input", (e) => uygulayanDegisti(e.target));
 }
 
 async function baslat() {
@@ -1104,6 +1185,8 @@ async function baslat() {
     ["uygulayan", "hedefOran", "dogrudanIslem", "raporBolumleri"]);
   uygulayan = ayarlar.uygulayan ?? "";
   $("alanUygulayan").value = uygulayan;
+  $("alanUygulayanKisa").value = uygulayan;
+  uygulayanUyarisiniTazele();
   hedefOran = Number.isFinite(ayarlar.hedefOran) && ayarlar.hedefOran > 0
     ? ayarlar.hedefOran : 1;
   $("alanHedefOran").value = hedefOran;

@@ -105,53 +105,14 @@ function satirlaraBol(metin, font, punto, genislik) {
 }
 
 /**
- * Hastanın görüşünü formun boş orta sütun hücrelerine yazar.
- * Anketin gerçekten yapıldığına dair delil olduğu için metin kaybolmamalı:
- * hücrelere sığmayan kısım çağıran tarafa geri döner, o da ikinci sayfaya taşır.
+ * Hastanın görüşü için ek sayfa(lar).
  *
- * @returns {string[]} yazılamayan satırlar
+ * Metin forma değil, arkasına yazılıyor. Tablonun altında yazıcının basabildiği
+ * yalnızca ~13 punto var ve onu da onay damgası kullanıyor; formun ortasındaki
+ * boş sütuna yazmak ise sayfayı dağıtıyordu. Metin delil olduğu için
+ * kırpılmıyor: kaç sayfa gerekiyorsa o kadar açılıyor.
  */
-function gorusuYaz(sayfa, yukseklik, gorus, font, tetkikYok) {
-  const { punto, satir_yuksekligi: satirY, etiket } =
-    GEOMETRI.serbest_alanlar.gorus_basligi;
-  const DEVAM = "(devamı arka sayfada)";
-
-  const hucreler = GEOMETRI.gorus_hucreleri
-    .filter((h) => !(h.soru === 7 && tetkikYok));   // o hücrede tetkik notu duruyor
-
-  // Hücrelerin taşıdığı taban çizgileri, yukarıdan aşağıya
-  const yerler = [];
-  for (const h of hucreler) {
-    for (let y = h.y0 + punto; y <= h.y1; y += satirY) yerler.push({ x: h.x0, y });
-  }
-
-  const genislik = hucreler[0].x1 - hucreler[0].x0;
-  const satirlar = [etiket, ...satirlaraBol(gorus, font, punto, genislik)];
-  const tasiyor = satirlar.length > yerler.length;
-  // Taşıyorsa son satır, okuyucuyu arka sayfaya yönlendiren nota ayrılır.
-  const yazilacak = tasiyor ? satirlar.slice(0, yerler.length - 1) : satirlar;
-
-  yazilacak.forEach((satir, n) => {
-    if (!satir) return;
-    sayfa.drawText(satir, {
-      x: yerler[n].x, y: yukseklik - yerler[n].y, size: punto, font, color: KALEM
-    });
-  });
-
-  if (!tasiyor) return [];
-
-  const son = yerler[yazilacak.length];
-  sayfa.drawText(DEVAM, {
-    x: son.x, y: yukseklik - son.y, size: punto, font, color: KALEM
-  });
-  return satirlar.slice(yazilacak.length);
-}
-
-/**
- * Sığmayan görüş satırları için ek sayfa(lar). Şablonun 1. sayfası değişmez.
- * Metin delil olduğu için kırpılmaz: kaç sayfa gerekiyorsa o kadar açılır.
- */
-function gorusDevamSayfalari(belge, font, kayit, satirlar) {
+function gorusSayfalari(belge, font, kayit, metin) {
   const gen = GEOMETRI.sayfa.genislik;
   const yuk = GEOMETRI.sayfa.yukseklik;
   const KENAR = 34;
@@ -161,8 +122,7 @@ function gorusDevamSayfalari(belge, font, kayit, satirlar) {
   const sonSatir = yuk - 52;                 // damga satırının üstünde kalsın
   const damga = GEOMETRI.serbest_alanlar.damga_satiri;
 
-  // 1. sayfadaki dar sütuna göre bölünmüş satırlar burada yeniden akıtılıyor.
-  const akan = satirlaraBol(satirlar.join(" "), font, punto, gen - 2 * KENAR);
+  const akan = satirlaraBol(metin, font, punto, gen - 2 * KENAR);
   const sayfaBasina = Math.max(1, Math.floor((sonSatir - ilkSatir) / satirY) + 1);
   const toplamSayfa = Math.ceil(akan.length / sayfaBasina);
 
@@ -172,8 +132,7 @@ function gorusDevamSayfalari(belge, font, kayit, satirlar) {
       sayfa.drawText(String(metin), { x, y: yuk - tabanY, size: p, font, color: renk });
 
     const basSonu = toplamSayfa > 1 ? ` (${n + 1}/${toplamSayfa})` : "";
-    yaz(`HHD.FR.19 HASTA MEMNUNİYET ANKETİ — HASTA GÖRÜŞÜ (devamı)${basSonu}`,
-        KENAR, 60, 11);
+    yaz(`HHD.FR.19 HASTA MEMNUNİYET ANKETİ — HASTA GÖRÜŞÜ${basSonu}`, KENAR, 60, 11);
     yaz(`${kayit.hasta?.adSoyad ?? ""} · ${kayit.hasta?.poliklinik ?? ""}`, KENAR, 76, 9.5);
     sayfa.drawLine({
       start: { x: KENAR, y: yuk - 84 }, end: { x: gen - KENAR, y: yuk - 84 },
@@ -270,11 +229,8 @@ export async function anketiIsaretle(kayit) {
     yaz(SORULAR.find((s) => s.no === 7).kosulEtiketi, a.x, a.taban_y, a.punto);
   }
 
-  // 5) Hastanın görüşü — anketin yapıldığına dair delil olduğu için forma
-  //    da düşer. Boş orta sütuna sığmayan kısım ikinci sayfaya taşar.
-  const tasan = bosMu(kayit.hastaGorusu)
-    ? []
-    : gorusuYaz(sayfa, yukseklik, kayit.hastaGorusu.trim(), font, kayit.tetkikYok);
+  // 5) Hastanın görüşü arka sayfaya yazılır; damgada oraya işaret edilir.
+  const gorusVar = !bosMu(kayit.hastaGorusu);
 
   // 6) Onay damgası. Muayene ile anket zamanı yan yana durur; anketin hangi
   //    ziyarete ait olduğu formun kendisinden okunabilsin diye.
@@ -283,7 +239,8 @@ export async function anketiIsaretle(kayit) {
   const parcalar = [
     muayene ? `Muayene: ${muayene}` : null,
     `Anket: ${kayit.tarihGosterim || kayit.tarih} ${kayit.saat}`,
-    `Anketi uygulayan: ${kayit.uygulayan || "—"}`
+    `Anketi uygulayan: ${kayit.uygulayan || "—"}`,
+    gorusVar ? "Hasta görüşü arka sayfada" : null
   ].filter(Boolean);
 
   const tek = parcalar.join(" · ");
@@ -296,7 +253,7 @@ export async function anketiIsaretle(kayit) {
     yaz(parcalar.at(-1), d.x, d.taban_y + 5.5, d.punto, SIYAH);
   }
 
-  if (tasan.length) gorusDevamSayfalari(belge, font, kayit, tasan);
+  if (gorusVar) gorusSayfalari(belge, font, kayit, kayit.hastaGorusu.trim());
 
   belge.setTitle(`HHD.FR.19 Hasta Memnuniyet Anketi — ${kayit.hasta?.adSoyad ?? ""}`.trim());
   belge.setSubject(GEOMETRI.kaynak);

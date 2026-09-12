@@ -35,6 +35,15 @@
     </div>
   </div>
 
+  <!-- Adı girilmemişse PDF damgasında "—" görünür; burada uyarılır -->
+  <div id="uygulayanUyari" class="uyari-kutu gizli">
+    <strong>Anketi uygulayan adı girilmemiş</strong>
+    <span>PDF'in altındaki damgada boş görünür. Ayarlar sekmesinden girin.</span>
+    <div class="satir">
+      <input id="alanUygulayanKisa" type="text" placeholder="Ad soyad" autocomplete="off">
+    </div>
+  </div>
+
   <div id="uyariAlani"></div>
 
   <!-- Hasta -->
@@ -105,7 +114,10 @@
     <fieldset>
       <legend>Hastanın görüşü <span class="not">forma ve rapora düşer</span></legend>
       <textarea id="alanGorus" rows="3" placeholder="Hastanın kendi cümleleri…"></textarea>
-      <p class="not">Formun boş orta sütununa yazılır; sığmazsa arkaya ek sayfa eklenir.</p>
+      <p class="not">
+        Anketin arkasına ayrı bir sayfa olarak eklenir; formun altındaki damgada
+        "Hasta görüşü arka sayfada" yazar.
+      </p>
     </fieldset>
 
   </div>
@@ -176,6 +188,10 @@
     <legend>Anketi uygulayan</legend>
     <label>Ad soyad <input id="alanUygulayan" type="text" autocomplete="off"
                            placeholder="PDF'in altındaki damgaya yazılır"></label>
+    <p class="not">
+      Anketi kimin yaptığı PDF'in altındaki damgaya, listeye ve rapordaki
+      "anketi uygulayan" kırılımına yazılır.
+    </p>
   </fieldset>
 
   <fieldset>
@@ -191,6 +207,11 @@
       Anket yapılan hekimler listeye kendiliğinden düşer; karşılarına
       polikliniği yazmanız yeterli. Eşleme ana klasöre yazılır, diğer
       bilgisayar da aynı listeyi görür.
+    </p>
+    <p class="not">
+      Bir hekim poliklinik değiştirirse <strong>eskisini silmeyin</strong>,
+      <em>+ dönem</em> ile yeni bir satır açıp başlangıç tarihini yazın. O
+      tarihten önceki anketler eski poliklinikte kalır.
     </p>
     <div id="hekimListesi"></div>
     <div class="satir">

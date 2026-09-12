@@ -243,8 +243,21 @@ input[type="number"]:focus {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .hekim-satir .ad.eksik { color: var(--uyari); font-weight: 600; }
-.hekim-satir input { flex: 1 1 55%; min-width: 0; margin-top: 0; font-size: 11.5px;
+.hekim-satir input { flex: 1 1 40%; min-width: 0; margin-top: 0; font-size: 11.5px;
                      padding: 3px 6px; }
+.hekim-satir input.tarih { flex: 0 0 78px; }
+.hekim-kutu { border: 1px solid var(--cizgi); border-radius: 5px; padding: 6px 7px; }
+.hekim-kutu > .baslik {
+  display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600;
+  margin-bottom: 4px;
+}
+.hekim-kutu > .baslik .ad { flex: 1; min-width: 0; overflow: hidden;
+                            text-overflow: ellipsis; white-space: nowrap; }
+.hekim-kutu > .baslik .ad.eksik { color: var(--uyari); }
+.donem-ekle {
+  background: none; border: none; color: var(--vurgu); font-size: 11px;
+  padding: 2px 4px; cursor: pointer; text-decoration: underline; flex: 0 0 auto;
+}
 .hekim-satir .sil {
   flex: 0 0 auto; border: none; background: none; color: var(--soluk);
   font-size: 13px; line-height: 1; padding: 2px 4px; cursor: pointer;

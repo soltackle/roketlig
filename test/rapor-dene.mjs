@@ -237,7 +237,9 @@ function anket(n, ek = {}) {
   const { kayitlariEsle, poliklinikBul, eksikHekimler, hekimAnahtari } =
     await import(path.join(kok, "motor/hekimler.js"));
 
-  const esleme = { [hekimAnahtari("Dt. Ayşe DEMİR")]: "Ortodonti" };
+  // Eski biçim (düz metin) da okunabilmeli
+  const esleme = { [hekimAnahtari("Dt. Ayşe DEMİR")]:
+                     [{ poliklinik: "Ortodonti", baslangic: null }] };
 
   assert.equal(poliklinikBul(esleme, "dt. ayşe  demir"), "Ortodonti",
     "ad yazımı farklı olsa da eşleşmeli");
@@ -267,6 +269,39 @@ function anket(n, ek = {}) {
   assert.ok(rapor.includes("Ortodonti"), "eşlenen poliklinik raporda görünmeli");
   assert.ok(!rapor.includes("Yanlış Birim"), "eski değer raporda kalmamalı");
   console.log("✓ hekim eşlemesi polikliniği düzeltiyor");
+}
+
+// --- hekim poliklinik değiştirince ----------------------------------------
+{
+  const { kayitlariEsle, poliklinikBul, hekimAnahtari } =
+    await import(path.join(kok, "motor/hekimler.js"));
+
+  // 01.10.2026'da Ortodonti'den Periodontoloji'ye geçmiş bir hekim
+  const esleme = {
+    [hekimAnahtari("Dt. Ayşe DEMİR")]: [
+      { poliklinik: "Ortodonti", baslangic: null },
+      { poliklinik: "Periodontoloji", baslangic: "2026-10-01" }
+    ]
+  };
+
+  assert.equal(poliklinikBul(esleme, "Dt. Ayşe DEMİR", "2026-09-20"), "Ortodonti",
+    "geçişten önceki tarih eski polikliniği vermeli");
+  assert.equal(poliklinikBul(esleme, "Dt. Ayşe DEMİR", "2026-10-01"), "Periodontoloji",
+    "geçiş günü yeni poliklinik");
+  assert.equal(poliklinikBul(esleme, "Dt. Ayşe DEMİR", "2026-11-05"), "Periodontoloji");
+  assert.equal(poliklinikBul(esleme, "Dt. Ayşe DEMİR"), "Periodontoloji",
+    "tarih verilmezse en güncel dönem");
+
+  const eylul = anket(1, { hasta: { ...anket(1).hasta, hekim: "Dt. Ayşe DEMİR",
+    muayeneZamani: "2026-09-20T09:00:00", poliklinik: "Yanlış" } });
+  const ekim = anket(2, { hasta: { ...anket(2).hasta, hekim: "Dt. Ayşe DEMİR",
+    muayeneZamani: "2026-10-14T09:00:00", poliklinik: "Yanlış" } });
+  const eslenmis = kayitlariEsle([eylul, ekim], esleme);
+
+  assert.equal(eslenmis[0].hasta.poliklinik, "Ortodonti",
+    "eski anket hekim taşınsa da eski poliklinikte kalmalı");
+  assert.equal(eslenmis[1].hasta.poliklinik, "Periodontoloji");
+  console.log("✓ hekim poliklinik değiştirince eski anketler yerinde kalıyor");
 }
 
 console.log("\nTüm sınamalar geçti.");

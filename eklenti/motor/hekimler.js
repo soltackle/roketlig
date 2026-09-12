@@ -5,31 +5,63 @@
  * seçiliyken yanlış olabiliyor. Bu yüzden hangi hekimin hangi poliklinikte
  * çalıştığı elle giriliyor ve poliklinik oradan çözülüyor.
  *
+ * Hekimler poliklinik değiştirebildiği için eşleme dönemlidir: her hekimin
+ * bir veya birden çok dönemi olur, her dönemin bir başlangıç tarihi vardır.
+ * Bir anketin polikliniği, o anketin muayene tarihinde geçerli olan döneme
+ * bakılarak bulunur — hekim sonradan taşınsa bile eski anketler eski
+ * poliklinikte kalır.
+ *
  * Eşleme ana klasördeki `_ayarlar/hekimler.json` dosyasında durur; böylece
  * ikinci bir bilgisayar da aynı eşlemeyi görür ve rapor yalnızca klasörden
  * üretilebilir. Klasöre ulaşılamıyorsa tarayıcıdaki kopya kullanılır.
  */
 
 import { ayarOku, ayarYaz } from "./kayit.js";
+import { zamanaCevir } from "./zaman.js";
 
 const DOSYA = "hekimler.json";
 const YEREL_ANAHTAR = "hekimEslemesi";
-
-const bosEsleme = () => ({ surum: 1, guncelleme: null, eslesme: {} });
 
 /** Aynı hekim adının farklı yazımları tek anahtara düşsün. */
 export function hekimAnahtari(ad) {
   return String(ad ?? "").trim().replace(/\s+/g, " ").toLocaleUpperCase("tr-TR");
 }
 
+/** "2026-10-01" ya da "01.10.2026" kabul eder; geçersizse null. */
+export function tariheCevir(ham) {
+  if (!ham) return null;
+  const d = zamanaCevir(ham);
+  if (!d) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-` +
+         `${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Eski biçim (`{"AD": "Poliklinik"}`) dönemli biçime çevrilir.
+ * Dönemler başlangıç tarihine göre eskiden yeniye sıralanır; tarihsiz dönem
+ * "başından beri" demektir ve en başa gelir.
+ */
 function duzenle(ham) {
-  if (!ham || typeof ham !== "object") return bosEsleme();
   const eslesme = {};
-  for (const [ad, poliklinik] of Object.entries(ham.eslesme ?? {})) {
+  for (const [ad, deger] of Object.entries(ham?.eslesme ?? {})) {
     const anahtar = hekimAnahtari(ad);
-    if (anahtar && poliklinik) eslesme[anahtar] = String(poliklinik).trim();
+    if (!anahtar) continue;
+
+    const ham_donemler = typeof deger === "string"
+      ? [{ poliklinik: deger, baslangic: null }]
+      : Array.isArray(deger) ? deger : [];
+
+    const donemler = ham_donemler
+      .map((d) => ({
+        poliklinik: String(d?.poliklinik ?? "").trim(),
+        baslangic: tariheCevir(d?.baslangic)
+      }))
+      .filter((d) => d.poliklinik)
+      .sort((a, b) => (a.baslangic ?? "").localeCompare(b.baslangic ?? ""));
+
+    if (donemler.length) eslesme[anahtar] = donemler;
   }
-  return { surum: 1, guncelleme: ham.guncelleme ?? null, eslesme };
+  return { surum: 2, guncelleme: ham?.guncelleme ?? null, eslesme };
 }
 
 /** Klasördeki eşlemeyi okur; yoksa tarayıcıdaki kopyaya düşer. */
@@ -44,33 +76,47 @@ export async function eslemeOku() {
   return { ...duzenle(kutu[YEREL_ANAHTAR]), kaynak: "yerel" };
 }
 
-/**
- * Eşlemeyi hem klasöre hem tarayıcıya yazar.
- * @returns {Promise<{klasoreYazildi: boolean}>}
- */
 export async function eslemeYaz(eslesme) {
   const nesne = duzenle({ eslesme, guncelleme: new Date().toISOString() });
   await chrome.storage.local.set({ [YEREL_ANAHTAR]: nesne });
-  return { klasoreYazildi: await ayarYaz(DOSYA, nesne) };
+  return { klasoreYazildi: await ayarYaz(DOSYA, nesne), esleme: nesne.eslesme };
 }
 
-/** Bir hekim adı için poliklinik; eşleme yoksa null. */
-export function poliklinikBul(eslesme, hekim) {
-  const anahtar = hekimAnahtari(hekim);
-  return anahtar && eslesme ? (eslesme[anahtar] ?? null) : null;
+/**
+ * Bir hekimin verilen tarihteki polikliniği.
+ * @param {string|Date|null} tarih  boşsa en son dönem kullanılır
+ */
+export function poliklinikBul(eslesme, hekim, tarih = null) {
+  const donemler = eslesme?.[hekimAnahtari(hekim)];
+  if (!donemler || !donemler.length) return null;
+
+  const gun = tariheCevir(tarih);
+  if (!gun) return donemler[donemler.length - 1].poliklinik;
+
+  let secili = null;
+  for (const d of donemler) {
+    if (d.baslangic === null || d.baslangic <= gun) secili = d;
+    else break;
+  }
+  // Hepsi anketten sonra başlıyorsa en eski dönem en yakın tahmindir.
+  return (secili ?? donemler[0]).poliklinik;
 }
+
+/** Anketin ait olduğu ziyaretin tarihi — poliklinik onun üzerinden çözülür. */
+const kayitTarihi = (k) =>
+  k.hasta?.muayeneZamani ?? k.hasta?.islemTarihi ?? k.tarih ?? null;
 
 /**
  * Kayıtlardaki poliklinik alanını eşlemeye göre düzeltir.
  *
  * Eşleme varsa o kazanır: kayıttaki değer anket sırasında birim filtresinden
- * tahmin edilmiş olabilir, eşleme ise elle girilmiş kesin bilgidir. Eşleme
- * yoksa kayıttaki değer olduğu gibi kalır.
+ * tahmin edilmiş olabilir, eşleme ise elle girilmiş kesin bilgidir. Diskteki
+ * kayda dokunulmaz, düzeltme yalnızca okurken yapılır.
  */
 export function kayitlariEsle(kayitlar, eslesme) {
   if (!eslesme || !Object.keys(eslesme).length) return kayitlar;
   return kayitlar.map((k) => {
-    const bulunan = poliklinikBul(eslesme, k.hasta?.hekim);
+    const bulunan = poliklinikBul(eslesme, k.hasta?.hekim, kayitTarihi(k));
     if (!bulunan || bulunan === k.hasta?.poliklinik) return k;
     return { ...k, hasta: { ...k.hasta, poliklinik: bulunan, poliklinikEslemeden: true } };
   });
@@ -83,7 +129,7 @@ export function eksikHekimler(kayitlar, eslesme) {
     const ad = k.hasta?.hekim;
     if (!ad) continue;
     const anahtar = hekimAnahtari(ad);
-    if (eslesme?.[anahtar]) continue;
+    if (eslesme?.[anahtar]?.length) continue;
     if (!sayac.has(anahtar)) sayac.set(anahtar, { ad: String(ad).trim(), adet: 0 });
     sayac.get(anahtar).adet += 1;
   }
@@ -92,5 +138,9 @@ export function eksikHekimler(kayitlar, eslesme) {
 
 /** Eşlemede geçen poliklinik adları — girişte öneri listesi olur. */
 export function poliklinikAdlari(eslesme) {
-  return [...new Set(Object.values(eslesme ?? {}))].sort((a, b) => a.localeCompare(b, "tr"));
+  const adlar = new Set();
+  for (const donemler of Object.values(eslesme ?? {})) {
+    for (const d of donemler) adlar.add(d.poliklinik);
+  }
+  return [...adlar].sort((a, b) => a.localeCompare(b, "tr"));
 }

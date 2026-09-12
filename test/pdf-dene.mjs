@@ -54,6 +54,11 @@ const sayfaMetni = async (bayt) => {
   const d = await PDFDocument.load(bayt);
   return d.getPageCount();
 };
-assert.equal(await sayfaMetni(bayt), 1, "kısa görüş tek sayfada kalmalı");
-assert.ok(await sayfaMetni(uzunBayt) >= 2, "uzun görüş için ek sayfa açılmalı");
-console.log("✓ kısa görüş 1 sayfa, uzun görüş ek sayfaya taşıyor");
+// Görüş forma değil arka sayfaya yazılıyor; kısa da olsa ek sayfa açılır.
+assert.equal(await sayfaMetni(bayt), 2, "görüş varsa arka sayfa açılmalı");
+assert.ok(await sayfaMetni(uzunBayt) >= 2, "uzun görüş için de ek sayfa");
+
+const gorussuz = { ...kayit, hastaGorusu: "" };
+assert.equal(await sayfaMetni(await anketiIsaretle(gorussuz)), 1,
+  "görüş yoksa tek sayfa kalmalı");
+console.log("✓ görüş arka sayfaya yazılıyor, yoksa sayfa eklenmiyor");

@@ -41,10 +41,15 @@ Panelde önce **görüşme sonucu** seçilir. Ulaşılamayan görüşmeler PDF's
 olarak tutulur; ulaşılma oranı ve tekrar aranacaklar listesi bunlardan çıkar.
 
 Ulaşıldıysa form açılır. Cevaplar **1–5 tuşlarıyla** girilir, her seçimde
-taslak kendiliğinden kaydedilir. Hastanın kendi cümleleri formun boş orta
-sütununa yazılır — anketin gerçekten yapıldığına dair delil; sığmazsa arkaya
-ek sayfa eklenir. Onaydan önce doldurulmuş PDF önizlenir; onaya basıldığında
-en alta tarih-saat-uygulayan damgası düşer ve kayıt kilitlenir.
+taslak kendiliğinden kaydedilir. Hastanın kendi cümleleri anketin arkasına
+ayrı bir sayfa olarak eklenir — anketin gerçekten yapıldığına dair delil.
+Onaydan önce doldurulmuş PDF önizlenir; onaya basıldığında en alta
+muayene ve anket zamanı ile anketi uygulayanın adını taşıyan damga düşer,
+kayıt kilitlenir.
+
+Formun altında yazıcının basabildiği yalnızca ~13 punto var ve onu damga
+kullanıyor; bu yüzden görüş sayfanın altına değil arkasına yazılıyor,
+damgada "Hasta görüşü arka sayfada" notu çıkıyor.
 
 Dosyalar şu yapıya yazılır:
 
@@ -87,6 +92,11 @@ yapılan hekimler listeye kendiliğinden düşüyor. Eşleme ana klasördeki
 `_ayarlar/hekimler.json` dosyasına yazılıyor, ikinci bilgisayar da aynı listeyi
 görüyor. Eşleme girildiği anda hem yeni anketlerin polikliniği doğru geliyor
 hem eski kayıtlar rapor ve liste üretilirken düzeltiliyor.
+
+Hekimler poliklinik değiştirebildiği için eşleme **dönemlidir**: her hekime
+başlangıç tarihiyle yeni bir dönem eklenebilir. Bir anketin polikliniği,
+o anketin muayene tarihinde geçerli olan döneme bakılarak bulunur — hekim
+sonradan taşınsa bile eski anketler eski poliklinikte kalır.
 
 **Rapor bölümleri.** Raporda hangi bölümlerin görüneceği Ayarlar'dan tikle
 seçiliyor. Hazır bölümler: kapsam ve hedef, soru bazlı sonuçlar, poliklinik ve
