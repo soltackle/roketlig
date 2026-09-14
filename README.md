@@ -152,7 +152,11 @@ rapora muayene günü olarak yazılır. Getirilmediyse ve gün başka bir alanda
 **Arşiv.** Basılan PDF'te hasta adı, telefonu, polikliniği ve **T.C. kimlik
 numarası** yer alır; kimlik numarası formda böyle bir alan olmadığı için ad
 soyad satırının sağına yazılır. Denetimcinin arşivdeki belgeyi hasta kimliğiyle
-eşleştirebilmesi için.
+eşleştirebilmesi için. Aynı şekilde **hekim adı** da poliklinik satırının boş
+kalan sağ yarısına, polikliniğin hemen yanına yazılır — hangi hekimin hangi
+poliklinikte görüldüğü PDF'in kendisinden, kayıt dosyasına bakmadan
+anlaşılsın diye. İkisi de sığmazsa (uzun poliklinik + uzun hekim adı) altındaki
+damga satırına düşer.
 
 ## Depo düzeni
 

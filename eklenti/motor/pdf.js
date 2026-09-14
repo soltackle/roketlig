@@ -135,7 +135,8 @@ function gorusSayfalari(belge, font, kayit, metin) {
     yaz(`HHD.FR.19 HASTA MEMNUNİYET ANKETİ — HASTA GÖRÜŞÜ${basSonu}`, KENAR, 60, 11);
     const kimlik = [kayit.hasta?.adSoyad, kayit.hasta?.tcKimlikNo
       ? `T.C. ${String(kayit.hasta.tcKimlikNo).trim()}` : null,
-      kayit.hasta?.poliklinik].filter(Boolean).join(" · ");
+      kayit.hasta?.poliklinik,
+      kayit.hasta?.hekim].filter(Boolean).join(" · ");
     yaz(kimlik, KENAR, 76, 9.5);
     sayfa.drawLine({
       start: { x: KENAR, y: yuk - 84 }, end: { x: gen - KENAR, y: yuk - 84 },
@@ -201,6 +202,21 @@ export async function anketiIsaretle(kayit) {
     yaz(deger, a.x, a.taban_y, a.punto);
   }
 
+  /**
+   * Bir satırın boş kalan sağ yarısına ikinci bir alan sıkıştırır.
+   * Sığdığı yeri kendisi ölçer: önceki alanın bittiği yerin gerisine
+   * yazılmaz; oraya da sığmıyorsa null döner, çağıran damga satırına düşürür.
+   */
+  const sagaSikistir = (satirAlani, oncekiAlani, oncekiDeger, metin, punto) => {
+    const genislik = font.widthOfTextAtSize(metin, punto);
+    const oncekiSonu = oncekiAlani.x +
+      font.widthOfTextAtSize(String(oncekiDeger ?? ""), oncekiAlani.punto);
+    const x = Math.max(satirAlani.x, oncekiSonu + 12);
+    if (x + genislik > satirAlani.en_sag) return null;
+    yaz(metin, x, satirAlani.taban_y, punto);
+    return true;
+  };
+
   // 1b) T.C. kimlik numarası. Formda karşılığı yok ama arşivlenen belgeyi
   //     denetimci hasta kimliğiyle eşleştirebilsin diye yazılıyor; yeri ad
   //     soyad satırının boş kalan sağ yarısı. Ad uzunsa üstüne binmesin diye
@@ -210,12 +226,21 @@ export async function anketiIsaretle(kayit) {
   if (!bosMu(tcNo)) {
     const a = alanlar.tc_kimlik;
     const metin = `${a.etiket} ${String(tcNo).trim()}`;
-    const genislik = font.widthOfTextAtSize(metin, a.punto);
-    const adSonu = alanlar.ad_soyad.x +
-      font.widthOfTextAtSize(String(kayit.hasta?.adSoyad ?? ""), alanlar.ad_soyad.punto);
-    const x = Math.max(a.x, adSonu + 12);
-    if (x + genislik <= a.en_sag) yaz(metin, x, a.taban_y, a.punto);
-    else tcDamgada = `T.C. ${String(tcNo).trim()}`;
+    const sigdi = sagaSikistir(a, alanlar.ad_soyad, kayit.hasta?.adSoyad, metin, a.punto);
+    if (!sigdi) tcDamgada = `T.C. ${String(tcNo).trim()}`;
+  }
+
+  // 1c) Hekim adı. Formda poliklinik dışında hekime yer yok; hangi hekimin
+  //     hangi poliklinikte görüldüğü tek bakışta anlaşılsın diye poliklinik
+  //     satırının boş kalan sağ yarısına, polikliniğin hemen yanına yazılır.
+  //     Sığmazsa (uzun poliklinik adı + uzun hekim adı) damga satırına düşer.
+  const hekimAdi = kayit.hasta?.hekim;
+  let hekimDamgada = null;
+  if (!bosMu(hekimAdi)) {
+    const a = alanlar.hekim;
+    const metin = `${a.etiket} ${String(hekimAdi).trim()}`;
+    const sigdi = sagaSikistir(a, alanlar.poliklinik, kayit.hasta?.poliklinik, metin, a.punto);
+    if (!sigdi) hekimDamgada = `Hekim: ${String(hekimAdi).trim()}`;
   }
 
   // 2) Parantez kutularına X
@@ -258,6 +283,7 @@ export async function anketiIsaretle(kayit) {
   const muayene = muayeneGosterimi(kayit.hasta);
   const parcalar = [
     tcDamgada,
+    hekimDamgada,
     muayene ? `Muayene: ${muayene}` : null,
     `Anket: ${kayit.tarihGosterim || kayit.tarih} ${kayit.saat}`,
     `Anketi uygulayan: ${kayit.uygulayan || "—"}`,

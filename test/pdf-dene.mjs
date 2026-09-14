@@ -128,3 +128,37 @@ async function formMetinleri(bayt) {
     "sığmayan T.C. damga satırına düşmeli");
   console.log("✓ uzun adda T.C. damga satırına düşüyor");
 }
+
+// --- Hekim adı poliklinikle yan yana ---------------------------------------
+/* Formda hekime yer yok; hangi hekimin hangi poliklinikte görüldüğü tek
+ * bakışta anlaşılsın diye poliklinik satırının boş kalan sağ yarısına,
+ * polikliniğin hemen yanına yazılıyor. */
+{
+  const k = { ...kayit, hastaGorusu: "",
+    hasta: { ...kayit.hasta, hekim: "Dt. Ayşe DEMİR" } };
+  const metinler = await formMetinleri(await anketiIsaretle(k));
+  assert.ok(metinler.includes("Ağız, Diş ve Çene Cerrahisi"),
+    "poliklinik olduğu gibi yazılmalı");
+  assert.ok(metinler.includes("Hekim: Dt. Ayşe DEMİR"),
+    `hekim adı poliklinikle aynı satırda ayrı bir metin olarak yazılmalı — bulunanlar: ${JSON.stringify(metinler)}`);
+  console.log("✓ hekim adı poliklinikle yan yana yazılıyor");
+
+  // Poliklinik + hekim adı birlikte satıra sığmıyorsa damga satırına düşmeli
+  const uzun = { ...k, hasta: { ...k.hasta,
+    poliklinik: "Ağız, Diş ve Çene Cerrahisi Uzun Bölüm Adı Restoratif Diş Tedavisi",
+    hekim: "Dt. Çok Uzun İsimli Hekim Adı Soyadı Sığmayacak Kadar Uzun Bir İsim" } };
+  const digeri = await formMetinleri(await anketiIsaretle(uzun));
+  const kisaEtiket = `Hekim: ${uzun.hasta.hekim}`;
+  assert.ok(!digeri.includes(kisaEtiket),
+    "sığmayan hekim adı poliklinik satırına tek başına yazılmamalı");
+  const damga = digeri.find((m) => m.includes("Hekim:") && m.includes("Muayene:"));
+  assert.ok(damga, "sığmayan hekim adı damga satırına, diğer alanlarla birlikte düşmeli");
+  console.log("✓ sığmayan hekim adı damga satırına düşüyor");
+
+  // Poliklinik boşsa hekim satırın başından yazılmalı
+  const polsuz = { ...k, hasta: { ...k.hasta, poliklinik: "" } };
+  const ucuncu = await formMetinleri(await anketiIsaretle(polsuz));
+  assert.ok(ucuncu.includes("Hekim: Dt. Ayşe DEMİR"),
+    "poliklinik boşken de hekim adı yazılabilmeli");
+  console.log("✓ poliklinik boşken hekim adı yine de yazılıyor");
+}
