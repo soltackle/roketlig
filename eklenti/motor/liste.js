@@ -7,6 +7,7 @@
 
 import { GORUSME_SONUCLARI } from "./sorular.js";
 import { tarihGoster, saatGoster } from "./zaman.js";
+import { xlsxOlustur } from "./xlsx.js";
 
 const SONUC_ADI = new Map(GORUSME_SONUCLARI.map((s) => [s.kod, s.etiket]));
 
@@ -42,24 +43,21 @@ export function listeSatirlari(kayitlar, sadeceUlasilan = false) {
   return sirala(secili).map((k, n) => SUTUNLAR.map((s) => s.al(k, n)));
 }
 
-// --- CSV ------------------------------------------------------------------
+// --- Excel (.xlsx) ----------------------------------------------------------
 
-const csvAlan = (d) => {
-  const s = String(d ?? "");
-  return /[";\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
+export const ANKET_BASLIGI = "AVCILAR AĞIZ VE DİŞ SAĞLIĞI MERKEZİ HASTA MEMNUNİYET ANKETİ";
 
 /**
- * Excel'in Türkçe yerel ayarında sorunsuz açılması için ayraç noktalı virgül
- * ve başa BOM konuyor; T.C. no ile telefon metin olarak kalsın diye
- * başlarına apostrof eklenmiyor, bunun yerine sütun metin biçiminde gelir.
+ * Anket listesini gerçek bir .xlsx dosyası olarak üretir. İlk hücrede kurum ve
+ * anket adı, altında verilen dönem/gün etiketi, onun altında da tablo yer alır.
+ *
+ * @param {string} altBaslik  ör. "11.09.2026" (seçilen gün) ya da "Eylül 2026"
+ * @returns {Uint8Array} .xlsx dosyasının baytları
  */
-export function listeCsv(kayitlar, sadeceUlasilan = false) {
-  const satirlar = [
-    SUTUNLAR.map((s) => s.baslik),
-    ...listeSatirlari(kayitlar, sadeceUlasilan)
-  ];
-  return "﻿" + satirlar.map((s) => s.map(csvAlan).join(";")).join("\r\n") + "\r\n";
+export function listeXlsx(altBaslik, kayitlar, sadeceUlasilan = false) {
+  const basSutunlari = SUTUNLAR.map((s) => s.baslik);
+  const satirlar = listeSatirlari(kayitlar, sadeceUlasilan);
+  return xlsxOlustur(ANKET_BASLIGI, altBaslik, basSutunlari, satirlar);
 }
 
 // --- HTML -----------------------------------------------------------------

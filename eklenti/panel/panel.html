@@ -162,9 +162,14 @@
       Yapılan anketlerin dökümü: ad soyad, T.C. kimlik no, telefon, poliklinik,
       hekim, muayene tarihi, aranma tarihi ve saati.
     </p>
+    <label>Gün (opsiyonel) <input id="gunSecim" type="date"></label>
+    <p class="not">
+      Gün seçilirse liste ve Excel yalnızca o gün aranan hastaları gösterir;
+      boş bırakılırsa yukarıdaki ayın tamamı alınır.
+    </p>
     <div class="satir">
       <button id="btnListe" class="birincil" type="button">Listeyi aç</button>
-      <button id="btnListeCsv" class="ikincil" type="button">CSV indir</button>
+      <button id="btnListeExcel" class="ikincil" type="button">Excel indir</button>
     </div>
     <label class="satir-ici">
       <input id="cbSadeceUlasilan" type="checkbox"> Yalnızca ulaşılanlar

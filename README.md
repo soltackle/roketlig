@@ -133,8 +133,10 @@ eklenti bunun yüzdesini (varsayılan %1, Ayarlar'dan değiştirilir) hedef saya
 
 **Anket listesi.** Rapor sekmesinden, yapılan anketlerin dökümü alınır: ad
 soyad, T.C. kimlik no, telefon, başvurduğu poliklinik, hekim, muayene tarihi
-ve saati, aranma tarihi ve saati, görüşme sonucu, anketi uygulayan. Ekranda
-açılıp yazdırılabilir ya da CSV olarak Excel'e alınabilir.
+ve saati, aranma tarihi ve saati, görüşme sonucu, anketi uygulayan. İstenirse
+tek bir gün seçilip yalnızca o gün aranan hastalar listelenir. Ekranda açılıp
+yazdırılabilir ya da doğrudan .xlsx olarak indirilebilir — dosyanın en
+üstünde kurum ve anket adı, altında seçilen gün/ay etiketi yer alır.
 
 Muayene ile arama zamanı üç yerde birden görünür: PDF'in altındaki damgada,
 listede ve raporda. Rapor ayrıca **ortalama dönüş süresini** — muayeneden

@@ -1,11 +1,11 @@
-/* Anket listesi (HTML + CSV) üretecini sınar. */
+/* Anket listesi (HTML + Excel) üretecini sınar. */
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
 const kok = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "eklenti");
-const { listeHtml, listeCsv, listeSatirlari, SUTUNLAR } =
+const { listeHtml, listeXlsx, ANKET_BASLIGI, listeSatirlari, SUTUNLAR } =
   await import(path.join(kok, "motor/liste.js"));
 const { tarihGoster, saatGoster, sureGoster, saatFarki } =
   await import(path.join(kok, "motor/zaman.js"));
@@ -89,16 +89,21 @@ const kayit = (n, ek = {}) => ({
   console.log("✓ 'yalnızca ulaşılanlar' süzgeci çalışıyor");
 }
 
-// --- CSV ------------------------------------------------------------------
+// --- Excel (.xlsx) ----------------------------------------------------------
 {
-  const csv = listeCsv([kayit(1), kayit(2, {
-    hasta: { ...kayit(2).hasta, adSoyad: 'TIRNAK "TEST"; NOKTALI' }
+  const xlsx = listeXlsx("11.09.2026", [kayit(1), kayit(2, {
+    hasta: { ...kayit(2).hasta, adSoyad: "Ö & Ç <TEST>" }
   })]);
-  assert.ok(csv.startsWith("﻿"), "Excel için BOM olmalı");
-  assert.ok(csv.includes("T.C. Kimlik No;"), "ayraç noktalı virgül");
-  assert.ok(csv.includes('"TIRNAK ""TEST""; NOKTALI"'), "tırnak ve ayraç kaçışlanmalı");
-  assert.equal(csv.split("\r\n").filter(Boolean).length, 3, "başlık + 2 satır");
-  console.log("✓ CSV kaçışlama ve biçim doğru");
+  assert.ok(xlsx instanceof Uint8Array, "Uint8Array dönmeli");
+  assert.deepEqual([...xlsx.slice(0, 4)], [0x50, 0x4b, 0x03, 0x04], "geçerli bir ZIP/xlsx imzası olmalı");
+
+  const metin = Buffer.from(xlsx).toString("latin1");
+  const iceriyor = (s) => metin.includes(Buffer.from(s, "utf-8").toString("latin1"));
+  assert.ok(iceriyor(ANKET_BASLIGI), "üstteki hücrede kurum ve anket adı olmalı");
+  assert.ok(iceriyor("11.09.2026"), "altındaki hücrede seçilen günün tarihi olmalı");
+  assert.ok(iceriyor("T.C. Kimlik No"), "sütun başlıkları tabloda olmalı");
+  assert.ok(iceriyor("Ö &amp; Ç &lt;TEST&gt;"), "hücre içeriği XML için kaçışlanmalı");
+  console.log("✓ Excel (.xlsx) başlık, tarih ve tablo doğru");
 }
 
 // --- HTML -----------------------------------------------------------------

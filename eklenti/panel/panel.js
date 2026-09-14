@@ -16,7 +16,7 @@ import { raporUret, oncekiAyKlasoru, donemEtiketi,
 import { eslemeOku, eslemeYaz, hekimAnahtari, kayitlariEsle, eksikHekimler,
          poliklinikAdlari, poliklinikBul, poliklinigiGuncelle,
          hekimOzeti } from "../motor/hekimler.js";
-import { listeHtml, listeCsv } from "../motor/liste.js";
+import { listeHtml, listeXlsx } from "../motor/liste.js";
 import { tarihGoster, zamanGoster } from "../motor/zaman.js";
 
 const $ = (id) => document.getElementById(id);
@@ -1103,16 +1103,32 @@ function islemleriIste() {
 
 // ── Anket listesi ──────────────────────────────────────────
 
-/** Seçili ayın kayıtlarını okur; başaramazsa sebebini panele yazar. */
-async function ayinKayitlari(durumEl) {
-  const ay = $("aySecim").value;
+/** Gün alanından seçilen tarihi ("YYYY-MM-DD") ya da seçilmemişse null verir. */
+function seciliGun() {
+  return $("gunSecim").value || null;
+}
+
+/**
+ * Gün seçilmişse o güne ait ay klasörünü kendisi bulup yalnızca o günde
+ * arananları bırakır; gün boşsa yukarıdaki Ay seçiminin tamamını döndürür.
+ * Başaramazsa sebebini panele yazar.
+ */
+async function listelenecekKayitlar(durumEl) {
+  const gun = seciliGun();
+  const ay = gun ? kayitDeposu.ayKlasoruAdi(`${gun}T00:00:00`) : $("aySecim").value;
   if (!ay) return null;
+
   durumEl.textContent = "Veri dosyaları okunuyor…";
   try {
-    const { kayitlar, bozuk, eksik } = await kayitDeposu.ayKayitlariniOku(ay);
-    return { ay, kayitlar: kayitlariEsle(kayitlar, hekimEslemesi), bozuk, eksik };
+    const { kayitlar: ham, bozuk, eksik } = await kayitDeposu.ayKayitlariniOku(ay);
+    let kayitlar = kayitlariEsle(ham, hekimEslemesi);
+    if (gun) kayitlar = kayitlar.filter((k) => (k.tarih || "").slice(0, 10) === gun);
+    const etiket = gun ? tarihGoster(gun) : donemEtiketi(ay);
+    return { ay, gun, etiket, kayitlar, bozuk, eksik };
   } catch (e) {
-    durumEl.textContent = `Okunamadı: ${e.message ?? e}`;
+    durumEl.textContent = gun
+      ? `Bu güne ait ay klasörü bulunamadı: ${e.message ?? e}`
+      : `Okunamadı: ${e.message ?? e}`;
     return null;
   }
 }
@@ -1124,32 +1140,33 @@ const listeNotu = (sonuc, ek = "") =>
 
 async function listeyiAc() {
   const durum = $("listeDurum");
-  const sonuc = await ayinKayitlari(durum);
+  const sonuc = await listelenecekKayitlar(durum);
   if (!sonuc) return;
 
   const sadece = $("cbSadeceUlasilan").checked;
-  const html = listeHtml(donemEtiketi(sonuc.ay), sonuc.kayitlar, sadece);
+  const html = listeHtml(sonuc.etiket, sonuc.kayitlar, sadece);
   const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
   await sekmeAc(url);
   durum.textContent = listeNotu(sonuc, " listelendi");
 }
 
-async function listeyiIndir() {
+async function listeyiExceleIndir() {
   const durum = $("listeDurum");
-  const sonuc = await ayinKayitlari(durum);
+  const sonuc = await listelenecekKayitlar(durum);
   if (!sonuc) return;
 
   const sadece = $("cbSadeceUlasilan").checked;
-  const csv = listeCsv(sonuc.kayitlar, sadece);
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const xlsx = listeXlsx(sonuc.etiket, sonuc.kayitlar, sadece);
+  const url = URL.createObjectURL(new Blob([xlsx],
+    { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
   const bag = document.createElement("a");
   bag.href = url;
-  bag.download = `${kayitDeposu.dosyaAdiTemizle(sonuc.ay)} anket listesi.csv`;
+  bag.download = `${kayitDeposu.dosyaAdiTemizle(sonuc.etiket)} anket listesi.xlsx`;
   document.body.append(bag);
   bag.click();
   bag.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
-  durum.textContent = listeNotu(sonuc, " CSV olarak indirildi");
+  durum.textContent = listeNotu(sonuc, " Excel olarak indirildi");
 }
 
 // ── Klavye ─────────────────────────────────────────────────
@@ -1291,7 +1308,7 @@ function baglaniklariKur() {
   });
 
   $("btnListe").addEventListener("click", listeyiAc);
-  $("btnListeCsv").addEventListener("click", listeyiIndir);
+  $("btnListeExcel").addEventListener("click", listeyiExceleIndir);
 
   const uygulayanDegisti = (kaynak) => {
     uygulayan = kaynak.value.trim();

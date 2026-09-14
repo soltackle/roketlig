@@ -64,12 +64,12 @@ legend { font-size: 11px; font-weight: 600; color: var(--soluk); padding: 0 4px;
 label { display: block; font-size: 11px; color: var(--soluk); margin-bottom: 7px; }
 label:last-child { margin-bottom: 0; }
 
-input[type="text"], textarea, select {
+input[type="text"], input[type="date"], textarea, select {
   display: block; width: 100%; margin-top: 2px;
   font: inherit; color: var(--murekkep);
   padding: 5px 7px; border: 1px solid var(--cizgi); border-radius: 4px; background: #fff;
 }
-input[type="text"]:focus, textarea:focus, select:focus {
+input[type="text"]:focus, input[type="date"]:focus, textarea:focus, select:focus {
   outline: none; border-color: var(--vurgu); box-shadow: 0 0 0 2px var(--vurgu-acik);
 }
 textarea { resize: vertical; }
