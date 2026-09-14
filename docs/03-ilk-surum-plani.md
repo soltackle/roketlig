@@ -157,8 +157,12 @@ sayısı görünür.
 }
 ```
 
-T.C. kimlik numarası kayda giriyor (anket listesi için) ama PDF'e yazılmıyor —
-formda böyle bir alan yok. Mükerrer denetimi yine `hastaId` ile yapılıyor.
+T.C. kimlik numarası kayda, anket listesine ve (0.11.0'dan beri) PDF'e giriyor;
+formda karşılığı olmadığı için ad soyad satırının sağına yazılıyor. Mükerrer
+denetimi yine `hastaId` ile yapılıyor.
+
+`sonIslemTarihi`, hastaya son yapılan işlemin günüdür ve muayene günü olarak
+kullanılır — HBYS'nin muayene alanı çoğu kayıtta yalnızca saat taşıyor.
 
 Kapsam dışı sayılacak cevaplar (4/3, 6/3) kayıtta ham hâliyle duruyor;
 "ortalamaya girmez" kuralı `formSurum` alanına bağlı tek bir yerde tanımlı.

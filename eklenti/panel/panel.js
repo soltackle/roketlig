@@ -17,7 +17,8 @@ import { eslemeOku, eslemeYaz, hekimAnahtari, kayitlariEsle, eksikHekimler,
          poliklinikAdlari, poliklinikBul, poliklinigiGuncelle,
          hekimOzeti } from "../motor/hekimler.js";
 import { listeHtml, listeXlsx } from "../motor/liste.js";
-import { tarihGoster, zamanGoster } from "../motor/zaman.js";
+import { tarihGoster } from "../motor/zaman.js";
+import { muayeneGunu, muayeneGosterimi, sonIslemGunu } from "../motor/muayene.js";
 
 const $ = (id) => document.getElementById(id);
 const iki = (n) => String(n).padStart(2, "0");
@@ -27,7 +28,8 @@ const iki = (n) => String(n).padStart(2, "0");
 const bosTaslak = () => ({
   gorusmeSonucu: null,
   hasta: { hastaId: null, adSoyad: "", tcKimlikNo: "", telefon: "", poliklinik: "",
-           hekim: "", islemTarihi: null, muayeneZamani: null, poliklinikOneri: false },
+           hekim: "", islemTarihi: null, muayeneZamani: null, sonIslemTarihi: null,
+           poliklinikOneri: false },
   katilimci: { tur: null, cinsiyet: null, yasGrubu: null, egitim: null },
   cevaplar: {},
   tetkikYok: false,
@@ -160,7 +162,8 @@ function ciz() {
       `<div class="ad"></div><dl>${
         satir("Yaş", hbysHastasi.yas) + satir("Cinsiyet", hbysHastasi.cinsiyet) +
         satir("Telefon", hbysHastasi.telefon) + satir("Hekim", hbysHastasi.hekim) +
-        satir("Muayene", zamanGoster(hbysHastasi.muayeneZamani ?? hbysHastasi.islemTarihi)) +
+        satir("Muayene", muayeneGosterimi({ ...hbysHastasi,
+                                    sonIslemTarihi: taslak.hasta.sonIslemTarihi })) +
         satir("İşlem", hbysHastasi.islemDurumu)}</dl>`;
     kart.querySelector(".ad").textContent = hbysHastasi.adSoyad;
   } else if (!kart.classList.contains("bos")) {
@@ -169,13 +172,16 @@ function ciz() {
   }
 
   const hekimEslendiMi = Boolean(poliklinikBul(
-    hekimEslemesi, taslak.hasta.hekim,
-    taslak.hasta.muayeneZamani ?? taslak.hasta.islemTarihi));
+    hekimEslemesi, taslak.hasta.hekim, muayeneGunu(taslak.hasta)));
   const hekimVar = Boolean((taslak.hasta.hekim ?? "").trim());
   poliklinikKutusunuTazele();
   $("notPoliklinik").classList.toggle("gizli",
     !taslak.hasta.poliklinikOneri || !hekimVar);
   $("notPoliklinikEksik").classList.toggle("gizli", !hekimVar || hekimEslendiMi);
+
+  // Muayene günü çözülemediyse form ve liste o alanı boş basar; uyar.
+  $("notMuayeneEksik").classList.toggle("gizli",
+    !taslak.hasta.adSoyad || Boolean(muayeneGunu(taslak.hasta)));
 
   // Görüşme sonucu
   secimGrubuKur($("sonucSecim"), GORUSME_SONUCLARI.map((s) => s.etiket),
@@ -246,8 +252,7 @@ function ciz() {
 
 /** Poliklinik: önce elle girilen hekim eşlemesi, sonra HBYS'nin birim tahmini. */
 function poliklinikCoz(hasta) {
-  return poliklinikBul(hekimEslemesi, hasta?.hekim,
-                       hasta?.muayeneZamani ?? hasta?.islemTarihi)
+  return poliklinikBul(hekimEslemesi, hasta?.hekim, muayeneGunu(hasta))
       || hasta?.poliklinik || null;
 }
 
@@ -325,9 +330,10 @@ async function hastayiAl(hasta, kaynak = "hbys") {
     hekim: hasta.hekim ?? "",
     islemTarihi: hasta.islemTarihi ?? null,
     muayeneZamani: hasta.muayeneZamani ?? hasta.islemTarihi ?? null,
+    // Muayene günü asıl olarak son işlemin tarihidir; işlemler getirildiğinde dolar
+    sonIslemTarihi: hasta.sonIslemTarihi ?? null,
     poliklinikOneri: Boolean(hasta.poliklinik) &&
-                     !poliklinikBul(hekimEslemesi, hasta.hekim,
-                                    hasta.muayeneZamani ?? hasta.islemTarihi)
+                     !poliklinikBul(hekimEslemesi, hasta.hekim, muayeneGunu(hasta))
   };
   $("alanAd").value = taslak.hasta.adSoyad;
   $("alanTc").value = taslak.hasta.tcKimlikNo;
@@ -463,7 +469,8 @@ function kayitKur() {
       poliklinik: $("alanPoliklinik").value.trim(),
       hekim: $("alanHekim").value.trim(),
       islemTarihi: taslak.hasta.islemTarihi,
-      muayeneZamani: taslak.hasta.muayeneZamani
+      muayeneZamani: taslak.hasta.muayeneZamani,
+      sonIslemTarihi: taslak.hasta.sonIslemTarihi ?? null
     },
     katilimci: anketVar ? { ...taslak.katilimci } : { tur: null, cinsiyet: null, yasGrubu: null, egitim: null },
     cevaplar: anketVar ? cevaplar : {},
@@ -1042,6 +1049,17 @@ function islemleriGoster(veri) {
     return;
   }
 
+  // Muayene günü = son yapılan işlemin günü. HBYS'nin muayene alanı çoğu
+  // kayıtta yalnızca saat taşıdığı için gün buradan çözülüyor; formda,
+  // listede ve raporda görünen muayene tarihi budur.
+  const sonGun = sonIslemGunu(veri.satirlar);
+  if (sonGun && sonGun !== taslak.hasta.sonIslemTarihi) {
+    taslak.hasta.sonIslemTarihi = sonGun;
+    if (hbysHastasi) hbysHastasi.sonIslemTarihi = sonGun;
+    taslagiKaydet();
+    ciz();
+  }
+
   // Tarihe göre grupla, en yeni gün başta
   const gruplar = new Map();
   for (const s of veri.satirlar) {
@@ -1109,28 +1127,48 @@ function seciliGun() {
 }
 
 /**
- * Gün seçilmişse o güne ait ay klasörünü kendisi bulup yalnızca o günde
- * arananları bırakır; gün boşsa yukarıdaki Ay seçiminin tamamını döndürür.
- * Başaramazsa sebebini panele yazar.
+ * Listelenecek kayıtlar.
+ *
+ * Gün seçilmişse ölçü **muayene günüdür**, arama günü değil: liste o gün
+ * muayene olan hastaların anketlerini gösterir. Anket sonradan yapıldığı için
+ * kayıt, muayenenin ayında da ertesi ayın klasöründe de olabilir — ikisi de
+ * okunur. Gün boşsa yukarıdaki Ay seçiminin tamamı alınır.
  */
 async function listelenecekKayitlar(durumEl) {
   const gun = seciliGun();
-  const ay = gun ? kayitDeposu.ayKlasoruAdi(`${gun}T00:00:00`) : $("aySecim").value;
-  if (!ay) return null;
+  const klasorler = gun
+    ? kayitDeposu.gunKlasorleri(gun)
+    : [$("aySecim").value].filter(Boolean);
+  if (!klasorler.length) return null;
 
   durumEl.textContent = "Veri dosyaları okunuyor…";
-  try {
-    const { kayitlar: ham, bozuk, eksik } = await kayitDeposu.ayKayitlariniOku(ay);
-    let kayitlar = kayitlariEsle(ham, hekimEslemesi);
-    if (gun) kayitlar = kayitlar.filter((k) => (k.tarih || "").slice(0, 10) === gun);
-    const etiket = gun ? tarihGoster(gun) : donemEtiketi(ay);
-    return { ay, gun, etiket, kayitlar, bozuk, eksik };
-  } catch (e) {
+  const ham = [];
+  const bozuk = [];
+  const eksik = [];
+  let okunan = 0;
+  let sonHata = null;
+  for (const klasor of klasorler) {
+    try {
+      const o = await kayitDeposu.ayKayitlariniOku(klasor);
+      ham.push(...o.kayitlar);
+      bozuk.push(...o.bozuk);
+      eksik.push(...(o.eksik ?? []));
+      okunan += 1;
+    } catch (e) {
+      sonHata = e;               // gün iki klasöre bakar; biri yoksa sorun değil
+    }
+  }
+  if (!okunan) {
     durumEl.textContent = gun
-      ? `Bu güne ait ay klasörü bulunamadı: ${e.message ?? e}`
-      : `Okunamadı: ${e.message ?? e}`;
+      ? `Bu güne ait kayıt klasörü bulunamadı: ${sonHata?.message ?? sonHata}`
+      : `Okunamadı: ${sonHata?.message ?? sonHata}`;
     return null;
   }
+
+  let kayitlar = kayitlariEsle(ham, hekimEslemesi);
+  if (gun) kayitlar = kayitlar.filter((k) => muayeneGunu(k.hasta) === gun);
+  const etiket = gun ? `${tarihGoster(gun)} muayeneleri` : donemEtiketi(klasorler[0]);
+  return { ay: klasorler[0], gun, etiket, kayitlar, bozuk, eksik };
 }
 
 const listeNotu = (sonuc, ek = "") =>

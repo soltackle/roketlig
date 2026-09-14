@@ -61,6 +61,11 @@
         Son gelişinde yapılan işlemler
       </button>
     </div>
+    <p id="notMuayeneEksik" class="not uyari gizli">
+      Muayene günü belli değil: HBYS yalnızca saat veriyor. Yukarıdaki
+      düğmeyle işlemleri bir kez getirin — son işlemin tarihi muayene günü
+      olarak forma ve listeye yazılır.
+    </p>
     <div class="alanlar">
       <label>Ad soyad <input id="alanAd" type="text" autocomplete="off"></label>
       <label>T.C. kimlik no <input id="alanTc" type="text" inputmode="numeric"
@@ -162,10 +167,11 @@
       Yapılan anketlerin dökümü: ad soyad, T.C. kimlik no, telefon, poliklinik,
       hekim, muayene tarihi, aranma tarihi ve saati.
     </p>
-    <label>Gün (opsiyonel) <input id="gunSecim" type="date"></label>
+    <label>Muayene günü (opsiyonel) <input id="gunSecim" type="date"></label>
     <p class="not">
-      Gün seçilirse liste ve Excel yalnızca o gün aranan hastaları gösterir;
-      boş bırakılırsa yukarıdaki ayın tamamı alınır.
+      Gün seçilirse liste ve Excel yalnızca o gün <strong>muayene olan</strong>
+      hastaları gösterir — arama daha sonra, hatta ertesi ay yapılmış olsa bile.
+      Boş bırakılırsa yukarıdaki ayın tamamı alınır.
     </p>
     <div class="satir">
       <button id="btnListe" class="birincil" type="button">Listeyi aç</button>

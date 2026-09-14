@@ -62,3 +62,69 @@ const gorussuz = { ...kayit, hastaGorusu: "" };
 assert.equal(await sayfaMetni(await anketiIsaretle(gorussuz)), 1,
   "görüş yoksa tek sayfa kalmalı");
 console.log("✓ görüş arka sayfaya yazılıyor, yoksa sayfa eklenmiyor");
+
+// --- Forma yazılan metinler ----------------------------------------------
+/* Metin gömülü altkümeyle çiziliyor: içerikteki baytlar glif kodları, okunur
+ * harf değil. Çıktının gerçekten doğru olduğunu görmek için pdf-lib'in yazdığı
+ * ToUnicode eşlemesi okunup kodlar harfe geri çevriliyor. */
+async function formMetinleri(bayt) {
+  const { inflateSync } = await import("node:zlib");
+  const { PDFDocument } = await import(path.join(kok, "varliklar/pdf-lib.esm.min.js"));
+  const belge = await PDFDocument.load(bayt);
+  const ctx = belge.context;
+  const ac = (akis) => {
+    const ham = Buffer.from(akis.getContents());
+    try { return inflateSync(ham).toString("latin1"); }
+    catch { return ham.toString("latin1"); }
+  };
+
+  const eslesme = new Map();
+  for (const [, nesne] of ctx.enumerateIndirectObjects()) {
+    const ref = String(nesne).includes("/ToUnicode")
+      ? nesne.get?.(ctx.obj("ToUnicode")) : null;
+    if (!ref) continue;
+    for (const m of ac(ctx.lookup(ref)).matchAll(/<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>/g)) {
+      eslesme.set(m[1].toLowerCase(), String.fromCodePoint(parseInt(m[2].slice(0, 4), 16)));
+    }
+  }
+
+  const icerik = belge.getPage(0).node.normalizedEntries().Contents;
+  const akislar = icerik.asArray ? icerik.asArray().map((r) => ctx.lookup(r)) : [icerik];
+  const govde = akislar.map(ac).join("");
+  return [...govde.matchAll(/<([0-9a-fA-F]+)>\s*Tj/g)].map((m) => {
+    const h = m[1].toLowerCase();
+    let cikti = "";
+    for (let i = 0; i < h.length; i += 4) cikti += eslesme.get(h.slice(i, i + 4)) ?? "?";
+    return cikti;
+  });
+}
+
+{
+  // T.C. kimlik numarası: arşivlenen belgeyi denetimci hasta kimliğiyle
+  // eşleştirebilsin diye ad soyad satırının sağına yazılıyor.
+  // Muayene günü de HBYS'nin saat taşıyan alanından değil, son işlemin
+  // tarihinden geliyor — eskiden damgada gün boş kalıp saat iki kez yazılıyordu.
+  const k = {
+    ...kayit, hastaGorusu: "Memnun kaldım.",
+    hasta: { ...kayit.hasta, tcKimlikNo: "10000000146",
+             muayeneZamani: "09:15", sonIslemTarihi: "2026-09-10" }
+  };
+  const metinler = await formMetinleri(await anketiIsaretle(k));
+  assert.ok(metinler.includes("T.C. Kimlik No: 10000000146"),
+    `T.C. kimlik no forma yazılmalı — bulunanlar: ${JSON.stringify(metinler)}`);
+  const damga = metinler.find((m) => m.startsWith("Muayene:"));
+  assert.ok(damga?.startsWith("Muayene: 10.09.2026 09:15"),
+    `damgada muayene günü ve saati olmalı — bulunan: ${damga}`);
+  assert.ok(damga.includes("Anket: 11.09.2026 14:32"), "damgada anket zamanı da kalmalı");
+  console.log("✓ T.C. kimlik no ve muayene günü forma yazılıyor");
+
+  // Ad çok uzunsa T.C. üstüne binmesin: alt damga satırına düşer
+  const uzunAd = { ...k, hasta: { ...k.hasta,
+    adSoyad: "ABDÜLKERİM MUHAMMEDEMİN KARAHASANOĞLU ÇELİKKANATLIOĞLU" } };
+  const ikinci = await formMetinleri(await anketiIsaretle(uzunAd));
+  assert.ok(!ikinci.some((m) => m.startsWith("T.C. Kimlik No:")),
+    "sığmayan T.C. ad satırına yazılmamalı");
+  assert.ok(ikinci.some((m) => m.includes("T.C. 10000000146")),
+    "sığmayan T.C. damga satırına düşmeli");
+  console.log("✓ uzun adda T.C. damga satırına düşüyor");
+}

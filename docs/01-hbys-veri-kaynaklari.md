@@ -164,11 +164,26 @@ yüklü store okunacak.
 
 - Ad-soyad, T.C. kimlik numarası ve telefon veri kaydında tutulur; hepsi
   hastane içindeki klasörde kalır.
-- T.C. kimlik numarası **PDF'e yazılmaz** — formda böyle bir alan yok. Yalnızca
-  veri kaydında ve ondan üretilen anket listesinde görünür.
+- T.C. kimlik numarası veri kaydında, anket listesinde ve **PDF'te** bulunur.
+  Formda böyle bir alan olmadığı için ad soyad satırının boş kalan sağ yarısına
+  yazılıyor; ad uzunsa alttaki damga satırına düşüyor. 0.11.0'da eklendi:
+  arşivlenen belgeyi denetimci hasta kimliğiyle eşleştirmek istiyor.
 - Aynı ay tekrar arama denetimi T.C. ile değil `HASTA_ID` ile yapılır.
 - Eklenti dışarıya hiçbir istek atmaz, tüm kütüphaneler paket içine gömülüdür.
 
 > T.C. kimlik numarası ilk sürümde hiç okunmuyordu. Anket listesinin resmî
 > döküm niteliği taşıması istendiği için 0.3.0'da eklendi; daha eski
-> kayıtlarda bu alan boş görünür.
+> kayıtlarda bu alan boş görünür. 0.11.0'dan önce basılan PDF'lerde de yoktur.
+
+## Muayene günü
+
+`MUAYENE_BASLAMA_ZAMANI` alanı çoğu kayıtta yalnızca saat taşıyor ("09:15"),
+gün taşımıyor. Muayene günü aslında hastaya **son yapılan işlemin tarihidir**:
+hasta o gün gelmiş, işlemler o gün yapılmıştır. Bu tarih, Tedavi-Plan
+ızgarasından (ya da doğrudan sorgudan) gelen işlem satırlarının en yenisinden
+okunup kayda `sonIslemTarihi` olarak yazılıyor; gün ile saat `motor/muayene.js`
+içinde birleştiriliyor.
+
+İşlem listesi hiç getirilmediyse gün ızgaradaki `TARIHI` alanından, o da yoksa
+muayene alanından çözülüyor; hiçbiri gün taşımıyorsa panel uyarıyor ve alan
+boş bırakılıyor — uydurulmuyor.

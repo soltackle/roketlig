@@ -128,6 +128,23 @@ export function ayKlasoruAdi(tarih) {
   return `${d.getFullYear()}-${iki(d.getMonth() + 1)} ${AYLAR[d.getMonth()]}`;
 }
 
+/**
+ * Bir muayene gününe ait anketlerin bulunabileceği ay klasörleri.
+ *
+ * Anket muayeneden sonra yapılıyor: ayın son günlerinde muayene olan hastanın
+ * anketi ertesi ayın klasörüne düşebilir. Bu yüzden muayene gününe göre arama
+ * iki klasöre birden bakar.
+ *
+ * @param {string} gun "YYYY-MM-DD"
+ * @returns {string[]} ör. ["2026-09 Eylul", "2026-10 Ekim"]
+ */
+export function gunKlasorleri(gun) {
+  const d = new Date(`${gun}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return [];
+  const sonraki = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  return [...new Set([ayKlasoruAdi(d), ayKlasoruAdi(sonraki)])];
+}
+
 /** Ada göre arama YALNIZCA ASCII adlarla yapılır — gerekçesi AYLAR notunda. */
 function ayKlasorAdi(yil, ay) {
   return `${yil}-${iki(ay)} ${AYLAR[ay - 1]}`;

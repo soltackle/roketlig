@@ -18,6 +18,7 @@
 
 import { ayarOku, ayarYaz } from "./kayit.js";
 import { zamanaCevir } from "./zaman.js";
+import { muayeneGunu } from "./muayene.js";
 
 const DOSYA = "hekimler.json";
 const YEREL_ANAHTAR = "hekimEslemesi";
@@ -117,8 +118,7 @@ export function poliklinikBul(eslesme, hekim, tarih = null) {
 }
 
 /** Anketin ait olduğu ziyaretin tarihi — poliklinik onun üzerinden çözülür. */
-const kayitTarihi = (k) =>
-  k.hasta?.muayeneZamani ?? k.hasta?.islemTarihi ?? k.tarih ?? null;
+const kayitTarihi = (k) => muayeneGunu(k.hasta) ?? k.tarih ?? null;
 
 /**
  * Kayıtlardaki poliklinik alanını eşlemeye göre düzeltir.

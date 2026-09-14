@@ -134,13 +134,25 @@ eklenti bunun yüzdesini (varsayılan %1, Ayarlar'dan değiştirilir) hedef saya
 **Anket listesi.** Rapor sekmesinden, yapılan anketlerin dökümü alınır: ad
 soyad, T.C. kimlik no, telefon, başvurduğu poliklinik, hekim, muayene tarihi
 ve saati, aranma tarihi ve saati, görüşme sonucu, anketi uygulayan. İstenirse
-tek bir gün seçilip yalnızca o gün aranan hastalar listelenir. Ekranda açılıp
+tek bir gün seçilip yalnızca o gün **muayene olan** hastalar listelenir —
+arama daha sonra, hatta ertesi ay yapılmış olsa bile. Ekranda açılıp
 yazdırılabilir ya da doğrudan .xlsx olarak indirilebilir — dosyanın en
 üstünde kurum ve anket adı, altında seçilen gün/ay etiketi yer alır.
 
 Muayene ile arama zamanı üç yerde birden görünür: PDF'in altındaki damgada,
 listede ve raporda. Rapor ayrıca **ortalama dönüş süresini** — muayeneden
 aramaya kadar geçen süreyi — hesaplar.
+
+**Muayene günü.** HBYS'nin muayene alanı çoğu kayıtta yalnızca saat veriyor.
+Muayene günü aslında hastaya son yapılan işlemin tarihidir; "Son gelişinde
+yapılan işlemler" bir kez getirildiğinde o tarih kayda geçer ve forma, listeye,
+rapora muayene günü olarak yazılır. Getirilmediyse ve gün başka bir alandan da
+çözülemiyorsa panel uyarır, alan uydurulmaz.
+
+**Arşiv.** Basılan PDF'te hasta adı, telefonu, polikliniği ve **T.C. kimlik
+numarası** yer alır; kimlik numarası formda böyle bir alan olmadığı için ad
+soyad satırının sağına yazılır. Denetimcinin arşivdeki belgeyi hasta kimliğiyle
+eşleştirebilmesi için.
 
 ## Depo düzeni
 

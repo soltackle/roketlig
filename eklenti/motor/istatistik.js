@@ -8,6 +8,7 @@
 
 import { SORULAR, GORUSME_SONUCLARI, puanlanirMi, kapsamDisiMi } from "./sorular.js";
 import { saatFarki, zamanaCevir } from "./zaman.js";
+import { muayeneZamaniCoz } from "./muayene.js";
 
 const cevapAl = (kayit, no) => kayit.cevaplar?.[no] ?? kayit.cevaplar?.[String(no)] ?? null;
 
@@ -123,7 +124,7 @@ export function hesapla(hamKayitlar) {
 
   // Muayeneden anketi yapmaya kadar geçen süre
   const gecikmeler = anketli
-    .map((k) => saatFarki(k.hasta?.muayeneZamani ?? k.hasta?.islemTarihi, k.zamanDamgasi))
+    .map((k) => saatFarki(muayeneZamaniCoz(k.hasta), k.zamanDamgasi))
     .filter((s) => s !== null && s >= 0);
   const ortalamaDonus = gecikmeler.length
     ? gecikmeler.reduce((t, s) => t + s, 0) / gecikmeler.length
@@ -328,7 +329,7 @@ export function hesapla(hamKayitlar) {
   ];
   const donusMemnuniyet = DONUS_ARALIKLARI.map((a) => {
     const grubu = anketli.filter((k) => {
-      const s = saatFarki(k.hasta?.muayeneZamani ?? k.hasta?.islemTarihi, k.zamanDamgasi);
+      const s = saatFarki(muayeneZamaniCoz(k.hasta), k.zamanDamgasi);
       return s !== null && s >= 0 && s >= a.enAz && s < a.enCok;
     });
     const { ortalama } = ortalamaPuan(grubu);

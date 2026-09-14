@@ -8,7 +8,7 @@ import { PDFDocument, rgb } from "../varliklar/pdf-lib.esm.min.js";
 import fontkit from "../varliklar/fontkit.esm.js";
 import { GEOMETRI } from "./form-geometrisi.js";
 import { SORULAR } from "./sorular.js";
-import { zamanGoster } from "./zaman.js";
+import { muayeneGosterimi } from "./muayene.js";
 
 const BOS_FORM = "varliklar/HHD.FR.19-bos-form.pdf";
 const YAZI_TIPI = "varliklar/LiberationSerif-Regular.ttf";
@@ -133,7 +133,10 @@ function gorusSayfalari(belge, font, kayit, metin) {
 
     const basSonu = toplamSayfa > 1 ? ` (${n + 1}/${toplamSayfa})` : "";
     yaz(`HHD.FR.19 HASTA MEMNUNİYET ANKETİ — HASTA GÖRÜŞÜ${basSonu}`, KENAR, 60, 11);
-    yaz(`${kayit.hasta?.adSoyad ?? ""} · ${kayit.hasta?.poliklinik ?? ""}`, KENAR, 76, 9.5);
+    const kimlik = [kayit.hasta?.adSoyad, kayit.hasta?.tcKimlikNo
+      ? `T.C. ${String(kayit.hasta.tcKimlikNo).trim()}` : null,
+      kayit.hasta?.poliklinik].filter(Boolean).join(" · ");
+    yaz(kimlik, KENAR, 76, 9.5);
     sayfa.drawLine({
       start: { x: KENAR, y: yuk - 84 }, end: { x: gen - KENAR, y: yuk - 84 },
       thickness: 0.7, color: SIYAH
@@ -145,7 +148,7 @@ function gorusSayfalari(belge, font, kayit, metin) {
       y += satirY;
     }
 
-    const muayene = zamanGoster(kayit.hasta?.muayeneZamani ?? kayit.hasta?.islemTarihi);
+    const muayene = muayeneGosterimi(kayit.hasta);
     yaz(
       (muayene ? `Muayene: ${muayene} · ` : "") +
       `Anket: ${kayit.tarihGosterim || kayit.tarih} ${kayit.saat} · ` +
@@ -198,6 +201,23 @@ export async function anketiIsaretle(kayit) {
     yaz(deger, a.x, a.taban_y, a.punto);
   }
 
+  // 1b) T.C. kimlik numarası. Formda karşılığı yok ama arşivlenen belgeyi
+  //     denetimci hasta kimliğiyle eşleştirebilsin diye yazılıyor; yeri ad
+  //     soyad satırının boş kalan sağ yarısı. Ad uzunsa üstüne binmesin diye
+  //     sağa itilir; oraya da sığmıyorsa alt damga satırına düşer.
+  const tcNo = kayit.hasta?.tcKimlikNo;
+  let tcDamgada = null;
+  if (!bosMu(tcNo)) {
+    const a = alanlar.tc_kimlik;
+    const metin = `${a.etiket} ${String(tcNo).trim()}`;
+    const genislik = font.widthOfTextAtSize(metin, a.punto);
+    const adSonu = alanlar.ad_soyad.x +
+      font.widthOfTextAtSize(String(kayit.hasta?.adSoyad ?? ""), alanlar.ad_soyad.punto);
+    const x = Math.max(a.x, adSonu + 12);
+    if (x + genislik <= a.en_sag) yaz(metin, x, a.taban_y, a.punto);
+    else tcDamgada = `T.C. ${String(tcNo).trim()}`;
+  }
+
   // 2) Parantez kutularına X
   const katilimci = kayit.katilimci || {};
   const secimler = {
@@ -235,8 +255,9 @@ export async function anketiIsaretle(kayit) {
   // 6) Onay damgası. Muayene ile anket zamanı yan yana durur; anketin hangi
   //    ziyarete ait olduğu formun kendisinden okunabilsin diye.
   const d = alanlar.damga_satiri;
-  const muayene = zamanGoster(kayit.hasta?.muayeneZamani ?? kayit.hasta?.islemTarihi);
+  const muayene = muayeneGosterimi(kayit.hasta);
   const parcalar = [
+    tcDamgada,
     muayene ? `Muayene: ${muayene}` : null,
     `Anket: ${kayit.tarihGosterim || kayit.tarih} ${kayit.saat}`,
     `Anketi uygulayan: ${kayit.uygulayan || "—"}`,

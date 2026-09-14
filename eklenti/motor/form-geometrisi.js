@@ -50,6 +50,14 @@ export const GEOMETRI = {
       "taban_y": 173.06,
       "punto": 10.5
     },
+    "tc_kimlik": {
+      "x": 360.0,
+      "taban_y": 173.06,
+      "punto": 10.5,
+      "etiket": "T.C. Kimlik No:",
+      "en_sag": 561.32,
+      "not": "formda karsiligi yok; ad soyad satirinin bos sag yarisina yazilir"
+    },
     "telefon": {
       "x": 155.0,
       "taban_y": 185.78,

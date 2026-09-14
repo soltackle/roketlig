@@ -128,4 +128,48 @@ const kayit = (n, ek = {}) => ({
   console.log(`✓ liste üretildi: ${hedef} (${(html.length / 1024).toFixed(0)} KB)`);
 }
 
+
+// --- Muayene günü: son işlemin tarihinden ---------------------------------
+/* HBYS'nin MUAYENE_BASLAMA_ZAMANI alanı çoğu kayıtta yalnızca saat taşıyor.
+ * Gün, hastaya son yapılan işlemin tarihinden gelir; listedeki "Muayene
+ * Tarihi" sütunu artık buna bakar. */
+{
+  const { muayeneGunu, muayeneSaati, muayeneTarihiGoster, muayeneGosterimi,
+          muayeneZamaniCoz, sonIslemGunu } =
+    await import(path.join(kok, "motor/muayene.js"));
+
+  // Yalnızca saat gelen alan gün diye kullanılmamalı
+  assert.equal(muayeneGunu({ muayeneZamani: "09:15" }), null);
+  assert.equal(muayeneSaati({ muayeneZamani: "09:15" }), "09:15");
+
+  const hasta = { muayeneZamani: "09:15", sonIslemTarihi: "2026-09-10" };
+  assert.equal(muayeneGunu(hasta), "2026-09-10");
+  assert.equal(muayeneTarihiGoster(hasta), "10.09.2026");
+  assert.equal(muayeneGosterimi(hasta), "10.09.2026 09:15");
+  assert.equal(muayeneZamaniCoz(hasta), "2026-09-10T09:15:00");
+
+  // Son işlem tarihi yoksa ızgaradaki TARIHI, o da yoksa muayene alanı
+  assert.equal(muayeneGunu({ islemTarihi: "2026-09-08T00:00:00" }), "2026-09-08");
+  assert.equal(muayeneGunu({ muayeneZamani: "2026-09-07T09:15:00" }), "2026-09-07");
+  assert.equal(muayeneGunu({}), null);
+  assert.equal(muayeneGosterimi({}), "");
+
+  // Son işlem günü: en yeni tarih kazanır, tarihsiz satırlar atlanır
+  assert.equal(sonIslemGunu([
+    { tarih: "2026-09-03T10:00:00" }, { tarih: "2026-09-10T11:30:00" },
+    { tarih: null }, { tarih: "2026-08-21T09:00:00" }
+  ]), "2026-09-10");
+  assert.equal(sonIslemGunu([]), null);
+
+  // Listede de son işlem tarihi görünmeli
+  const satir = listeSatirlari([kayit(1, { hasta: {
+    ...kayit(1).hasta, muayeneZamani: "09:15", sonIslemTarihi: "2026-09-10",
+    islemTarihi: null
+  } })])[0];
+  const sutun = (ad) => satir[SUTUNLAR.findIndex((s) => s.baslik === ad)];
+  assert.equal(sutun("Muayene Tarihi"), "10.09.2026");
+  assert.equal(sutun("Muayene Saati"), "09:15");
+  assert.equal(sutun("Aranma Tarihi"), "11.09.2026", "aranma tarihi ayrı kalmalı");
+  console.log("✓ muayene günü son işlemin tarihinden çözülüyor");
+}
 console.log("\nListe sınamaları geçti.");

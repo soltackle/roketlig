@@ -146,6 +146,15 @@ try {
   assert.ok(sonuc.raporUzunluk > 5000, "rapor üretilmeli");
 
   console.log("\n✓ anketler yazıldı, aylar listelendi, rapor üretildi");
+
+  // Muayene gününe göre arama iki klasöre birden bakmalı: ayın sonunda muayene
+  // olan hastanın anketi ertesi ayın klasörüne düşebiliyor.
+  const { gunKlasorleri } = await import(path.join(eklenti, "motor/kayit.js"));
+  assert.deepEqual(gunKlasorleri("2026-09-30"), ["2026-09 Eylul", "2026-10 Ekim"]);
+  assert.deepEqual(gunKlasorleri("2026-12-31"), ["2026-12 Aralik", "2027-01 Ocak"],
+    "yıl sonunda ertesi yıla geçmeli");
+  assert.deepEqual(gunKlasorleri("bos"), [], "geçersiz gün klasör üretmemeli");
+  console.log("✓ muayene günü iki ay klasörüne birden bakıyor");
   assert.deepEqual(hatalar, [], `sayfa hatası:\n${hatalar.join("\n")}`);
   console.log("Kayıt sınamaları geçti.");
 } finally {
